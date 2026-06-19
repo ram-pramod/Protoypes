@@ -1,0 +1,445 @@
+<!-- Browser Terminal for Servers — interactive flow prototype (simulated SSH, no real backend) -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browser Terminal — Prototype</title>
+<style>
+  :root{
+    --ink:#0B0E14; --panel:#12161F; --panel-2:#1B212C; --line:#262D3A;
+    --surface:#EEF1F5; --card:#FFFFFF; --card-line:#E2E7EE;
+    --brand:#1D6FE3; --brand-deep:#0B3D91;
+    --signal:#3FB950; --amber:#E3B341; --danger:#F4544B;
+    --text:#E6EDF3; --text-dim:#8B97A7; --text-ink:#1A2330; --text-ink-dim:#5C6878;
+    --mono:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--sans);background:var(--surface);color:var(--text-ink);-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer}
+  button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+  .screen{display:none;min-height:100%}
+  .screen.active{display:block}
+
+  /* DASHBOARD */
+  .topbar{background:var(--card);border-bottom:1px solid var(--card-line);padding:14px 28px;display:flex;align-items:center;gap:14px}
+  .logo{font-weight:800;letter-spacing:-.02em;font-size:18px;color:var(--brand-deep);display:flex;align-items:center;gap:9px}
+  .logo .dot{width:10px;height:10px;border-radius:3px;background:var(--brand)}
+  .crumb{color:var(--text-ink-dim);font-size:13px;margin-left:6px}
+  .acct{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-ink-dim)}
+  .avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand-deep))}
+
+  .wrap{max-width:980px;margin:0 auto;padding:38px 28px 80px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-ink-dim);font-weight:600}
+  h1{font-size:27px;letter-spacing:-.02em;margin:6px 0 26px}
+
+  .server-card{background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:24px;display:grid;grid-template-columns:1fr auto;gap:22px;align-items:center;box-shadow:0 1px 2px rgba(20,30,50,.04)}
+  .server-meta{display:flex;align-items:flex-start;gap:18px}
+  .stack-glyph{width:54px;height:54px;border-radius:12px;flex:0 0 auto;background:linear-gradient(160deg,#10243f,#0B0E14);position:relative;overflow:hidden}
+  .stack-glyph::before,.stack-glyph::after{content:"";position:absolute;left:11px;right:11px;height:6px;border-radius:2px;background:rgba(255,255,255,.18)}
+  .stack-glyph::before{top:16px}.stack-glyph::after{top:32px;background:rgba(63,185,80,.55)}
+  .server-name{font-size:18px;font-weight:700;letter-spacing:-.01em}
+  .server-sub{font-size:13px;color:var(--text-ink-dim);margin-top:3px;font-family:var(--mono)}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:4px 11px;border-radius:999px;margin-top:11px}
+  .pill .led{width:7px;height:7px;border-radius:50%}
+  .pill.active{background:rgba(63,185,80,.12);color:#1f7a32}.pill.active .led{background:var(--signal)}
+  .pill.stopped{background:rgba(244,84,75,.10);color:#b5302a}.pill.stopped .led{background:var(--danger)}
+  .pill.provisioning{background:rgba(227,179,65,.14);color:#8a6a14}.pill.provisioning .led{background:var(--amber)}
+
+  .launch-col{display:flex;flex-direction:column;align-items:flex-end;gap:9px;position:relative}
+  .btn{border:none;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:9px;transition:transform .08s,background .15s}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:#175fc7}
+  .btn-primary:disabled{background:#C3CBD6;color:#fff;cursor:not-allowed}
+  .btn .glyph{font-family:var(--mono);font-weight:700}
+  .tip{position:absolute;bottom:-40px;right:0;background:var(--text-ink);color:#fff;font-size:12px;padding:7px 11px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+  .launch-col:hover .tip.show{opacity:1}
+  .stateful-note{font-size:12px;color:var(--text-ink-dim)}
+
+  /* description / what-to-try card */
+  .guide{margin-top:26px;background:var(--card);border:1px solid var(--card-line);border-radius:14px;padding:22px 24px}
+  .guide h3{margin:0 0 4px;font-size:15px;letter-spacing:-.01em}
+  .guide .intro{margin:0 0 16px;font-size:13.5px;color:var(--text-ink-dim);line-height:1.6}
+  .guide .intro code{font-family:var(--mono);background:var(--surface);padding:1px 6px;border-radius:5px;color:var(--text-ink);font-size:12.5px}
+  .try{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:14px 26px}
+  @media(max-width:680px){.try{grid-template-columns:1fr}}
+  .try li{font-size:13px;color:var(--text-ink-dim);line-height:1.55}
+  .try b{color:var(--text-ink);font-weight:600;display:block;margin-bottom:2px}
+  .try code{font-family:var(--mono);background:var(--surface);padding:1px 6px;border-radius:5px;color:var(--text-ink);font-size:12px}
+
+  .control-strip{margin-top:22px;background:var(--card);border:1px dashed var(--card-line);border-radius:14px;padding:16px 20px}
+  .control-strip h3{margin:0 0 4px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-ink-dim)}
+  .control-strip p{margin:0 0 14px;font-size:13px;color:var(--text-ink-dim)}
+  .seg{display:inline-flex;background:var(--surface);border:1px solid var(--card-line);border-radius:9px;overflow:hidden}
+  .seg button{background:none;border:none;padding:8px 14px;font-size:13px;color:var(--text-ink-dim);font-weight:600}
+  .seg button.on{background:var(--card);color:var(--text-ink);box-shadow:inset 0 0 0 1px var(--card-line)}
+
+  /* TERMINAL */
+  #terminal.screen{background:var(--ink);color:var(--text);display:none;flex-direction:column;height:100vh}
+  #terminal.screen.active{display:flex}
+  .term-head{display:flex;align-items:center;gap:14px;padding:9px 16px;background:var(--panel);border-bottom:1px solid var(--line);font-size:13px}
+  .conn{display:flex;align-items:center;gap:8px;font-weight:600}
+  .conn .led{width:9px;height:9px;border-radius:50%;background:var(--text-dim)}
+  .conn .led.live{background:var(--signal);box-shadow:0 0 0 3px rgba(63,185,80,.18)}
+  .conn .led.warn{background:var(--amber);box-shadow:0 0 0 3px rgba(227,179,65,.18)}
+  .conn .led.dead{background:var(--danger);box-shadow:0 0 0 3px rgba(244,84,75,.18)}
+  .conn .led.connecting{background:var(--brand);animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  .host{color:var(--text-dim);font-family:var(--mono);font-size:12px}
+  .head-actions{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .icon-btn{background:transparent;border:1px solid transparent;color:var(--text-dim);border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;display:inline-flex;gap:6px;align-items:center}
+  .icon-btn:hover{border-color:var(--line);color:var(--text)}
+
+  .term-body{flex:1;position:relative;overflow:hidden}
+  .console{position:absolute;inset:0;padding:14px 16px;overflow-y:auto;font-family:var(--mono);font-size:13.5px;line-height:1.55}
+  .console .line{white-space:pre-wrap;word-break:break-word}
+  .console .muted{color:var(--text-dim)}
+  .console .ok{color:var(--signal)}.console .warnc{color:var(--amber)}.console .errc{color:var(--danger)}
+  .console a{color:#6cb6ff;text-decoration:underline;text-underline-offset:2px}
+  .prompt-user{color:var(--signal)}.prompt-path{color:var(--amber)}
+  .inputline{display:flex;align-items:baseline}
+  .inputline .ps1{white-space:pre}
+  .cmd-input{flex:1;background:transparent;border:none;color:var(--text);font-family:var(--mono);font-size:13.5px;padding:0 0 0 2px;caret-color:var(--signal)}
+  .cmd-input:focus{outline:none}
+  .cmd-input.pw{color:transparent;caret-color:transparent} /* SSH-style: typed password is not echoed */
+
+  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;background:rgba(8,11,17,.82);backdrop-filter:blur(2px);padding:24px;z-index:5}
+  .overlay.show{display:flex}
+  .overlay-card{max-width:380px}
+  .overlay-card .big{font-size:15px;font-weight:600;margin:0 0 8px}
+  .overlay-card .sub{color:var(--text-dim);font-size:13px;margin:0 0 18px;line-height:1.55}
+  .overlay-card .btn-primary{margin:0 auto}
+  .ring{width:40px;height:40px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--brand);margin:0 auto 18px;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .idle-banner{position:absolute;left:50%;top:14px;transform:translateX(-50%);display:none;background:rgba(227,179,65,.14);border:1px solid rgba(227,179,65,.4);color:var(--amber);padding:8px 16px;border-radius:999px;font-size:12.5px;font-weight:600;z-index:4}
+  .idle-banner.show{display:block}
+
+  #terminal.light{--ink:#FBFBFA;--panel:#F0F1F3;--line:#DDE1E7;--text:#1A2330;--text-dim:#6A7686}
+  #terminal.light .console a,#terminal.light .prompt-host{color:#1565d8}
+
+  #unsupported.screen{display:none;place-items:center;height:100vh;background:var(--ink);color:var(--text);text-align:center;padding:24px}
+  #unsupported.screen.active{display:grid}
+  #unsupported .box{max-width:380px}
+  #unsupported h2{font-size:17px;margin:0 0 10px}
+  #unsupported p{color:var(--text-dim);font-size:13.5px;line-height:1.6}
+
+  .copy-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(8px);opacity:0;background:var(--text-ink);color:#fff;font-size:12.5px;padding:9px 16px;border-radius:999px;transition:opacity .2s,transform .2s;z-index:50;pointer-events:none}
+  .copy-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+
+<!-- ============================ DASHBOARD ============================ -->
+<section id="dashboard" class="screen active">
+  <div class="topbar">
+    <div class="logo"><span class="dot"></span>Bluehost</div>
+    <span class="crumb">Servers / web-01</span>
+    <div class="acct">signed in as <strong>customer@acme.dev</strong><div class="avatar"></div></div>
+  </div>
+
+  <div class="wrap">
+    <div class="eyebrow">Server management</div>
+    <h1>web-01</h1>
+
+    <div class="server-card">
+      <div class="server-meta">
+        <div class="stack-glyph"></div>
+        <div>
+          <div class="server-name">web-01 · Ubuntu 24.04 LTS</div>
+          <div class="server-sub">203.0.113.42 · 4 vCPU · 8 GB</div>
+          <span class="pill active" id="statusPill"><span class="led"></span><span id="statusText">Active</span></span>
+        </div>
+      </div>
+      <div class="launch-col">
+        <button class="btn btn-primary" id="launchBtn"><span class="glyph">&gt;_</span>Terminal</button>
+        <span class="stateful-note" id="launchNote">Opens in a new tab</span>
+        <div class="tip" id="launchTip">Server must be running to launch the terminal</div>
+      </div>
+    </div>
+
+    <!-- description: what the terminal can do / what to try -->
+    <div class="guide">
+      <h3>Trying out the terminal</h3>
+      <p class="intro">Click <b>Terminal</b> to open a session. Just like connecting over SSH, the terminal opens first and then asks for the <b>root password</b> inline — use <code>hunter2</code> for this demo (anything else returns “Permission denied”). Once you're in, it behaves like a real shell. A few things worth trying:</p>
+      <ul class="try">
+        <li><b>Run package commands</b><code>apt update</code>, <code>apt-get update</code>, or <code>apt install nginx</code> return realistic, streaming output.</li>
+        <li><b>Copy &amp; paste</b>Copy a command from anywhere and paste with <code>Ctrl+V</code> or right-click; selecting and copying <i>from</i> the terminal works too.</li>
+        <li><b>Open links</b>Run <code>wget https://wordpress.org/latest.tar.gz</code> — printed URLs render as clickable links that open in a new tab.</li>
+        <li><b>Real shortcuts</b><code>↑/↓</code> history, <code>Tab</code> to complete, <code>Ctrl+L</code> clear, <code>Ctrl+C</code> cancel, <code>Ctrl+D</code> log out.</li>
+      </ul>
+      <p class="intro" style="margin:16px 0 0">Type <code>help</code> any time for the full command list.</p>
+    </div>
+
+    <div class="control-strip">
+      <h3>Prototype controls</h3>
+      <p>Simulated shell — no real server. Set the server state below, then use the header buttons inside the terminal to fire the idle-timeout and connection-drop flows. Reconnecting always drops you back to the inline password prompt.</p>
+      <div class="seg" id="stateSeg" role="group" aria-label="Server state">
+        <button class="on" data-state="active">Active</button>
+        <button data-state="stopped">Stopped</button>
+        <button data-state="provisioning">Provisioning</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ TERMINAL ("new tab") ============================ -->
+<section id="terminal" class="screen">
+  <div class="term-head">
+    <div class="conn"><span class="led" id="connLed"></span><span id="connText">Disconnected</span></div>
+    <span class="host">root@web-01 · 203.0.113.42</span>
+    <div class="head-actions">
+      <button class="icon-btn" id="trigIdle" title="Fast-forward the idle countdown">⏱ Idle timeout</button>
+      <button class="icon-btn" id="trigDrop" title="Simulate a network drop">⚡ Drop connection</button>
+      <button class="icon-btn" id="themeBtn">🌗 Light</button>
+      <button class="icon-btn" id="closeTab" title="Simulate closing the browser tab">✕ Close tab</button>
+    </div>
+  </div>
+
+  <div class="term-body">
+    <div class="idle-banner" id="idleBanner"></div>
+    <div class="console" id="console" tabindex="0"></div>
+
+    <div class="overlay" id="ovExpired">
+      <div class="overlay-card">
+        <p class="big">Session expired</p>
+        <p class="sub">Your terminal was disconnected after a period of inactivity. Your credentials weren't saved — reconnecting asks for the root password again.</p>
+        <button class="btn btn-primary" id="reconnectExpired">Reconnect</button>
+      </div>
+    </div>
+    <div class="overlay" id="ovDropped">
+      <div class="overlay-card">
+        <div class="ring" id="dropRing"></div>
+        <p class="big" id="dropTitle">Connection lost</p>
+        <p class="sub" id="dropSub">A network interruption ended the session. Attempting to reconnect…</p>
+        <button class="btn btn-primary" id="reconnectDrop" style="display:none">Reconnect</button>
+      </div>
+    </div>
+    <div class="overlay" id="ovEnded">
+      <div class="overlay-card">
+        <p class="big" id="endedTitle">Session ended</p>
+        <p class="sub" id="endedSub">The SSH session was terminated and cleaned up on the server. You can close this tab or start again.</p>
+        <button class="btn btn-primary" id="startAgain">Start a new session</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ UNSUPPORTED BROWSER ============================ -->
+<section id="unsupported" class="screen">
+  <div class="box">
+    <h2>This browser isn't supported</h2>
+    <p>The browser terminal needs a recent version of Chrome, Firefox, Safari, or Edge. Update your browser, then reopen the terminal from your server dashboard.</p>
+    <br><button class="btn btn-primary" id="backFromUnsupported">Back to dashboard</button>
+  </div>
+</section>
+
+<div class="copy-toast" id="copyToast">Copied</div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const show = id => { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active'); };
+  const HOST = '203.0.113.42';
+
+  /* ---------- Dashboard: server state + launch ---------- */
+  let serverState='active';
+  const stateText={active:'Active',stopped:'Stopped',provisioning:'Provisioning'};
+  const launchBtn=$('#launchBtn'),launchTip=$('#launchTip'),launchNote=$('#launchNote');
+  function renderState(){
+    $('#statusPill').className='pill '+serverState;
+    $('#statusText').textContent=stateText[serverState];
+    const active=serverState==='active';
+    launchBtn.disabled=!active;
+    launchTip.classList.toggle('show',!active);
+    launchNote.textContent=active?'Opens in a new tab':'Unavailable while '+stateText[serverState].toLowerCase();
+  }
+  $('#stateSeg').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    $('#stateSeg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); serverState=b.dataset.state; renderState();
+  });
+  renderState();
+  launchBtn.addEventListener('click',()=>{ show('#terminal'); beginConnect('Connecting to '+HOST+' port 22...'); });
+
+  /* ---------- Terminal lifecycle ---------- */
+  const term=$('#terminal'), consoleEl=$('#console');
+  const connLed=$('#connLed'), connText=$('#connText');
+  let idleTimer=null,idleWarnTimer=null,idleCountdownTimer=null,dropTimer=null;
+  let sessionLive=false, activeInput=null, mode=null; // mode: 'password' | 'command'
+  let passAttempts=0, currentUser='root', cwd='~', history=[], histIdx=-1;
+
+  function setConn(state){
+    connLed.className='led'+(state==='off'?'':' '+state);
+    connText.textContent={connecting:'Connecting…',live:'Connected',warn:'Idle — disconnecting soon',dead:'Disconnected',off:'Disconnected'}[state];
+  }
+  function hideOverlays(){ document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('show')); }
+  function clearTimers(){ [idleTimer,idleWarnTimer,dropTimer].forEach(t=>t&&clearTimeout(t)); if(idleCountdownTimer)clearInterval(idleCountdownTimer); idleTimer=idleWarnTimer=idleCountdownTimer=dropTimer=null; }
+  function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function writeLine(html,cls){ const d=document.createElement('div'); d.className='line'+(cls?' '+cls:''); d.innerHTML=html; consoleEl.appendChild(d); consoleEl.scrollTop=consoleEl.scrollHeight; return d; }
+
+  /* ---- Connect / inline authentication ---- */
+  function beginConnect(msg){
+    sessionLive=false; clearTimers(); hideOverlays();
+    $('#idleBanner').classList.remove('show');
+    consoleEl.innerHTML=''; setConn('connecting');
+    writeLine(msg,'muted');
+    setTimeout(()=>{ writeLine('Connection established.','muted'); passwordPrompt(); }, 650);
+  }
+  function passwordPrompt(){
+    mode='password';
+    const row=document.createElement('div'); row.className='line inputline';
+    row.innerHTML=`<span class="ps1">${esc('root@'+HOST)}'s password: </span>`;
+    const inp=document.createElement('input'); inp.className='cmd-input pw'; inp.type='text'; inp.spellcheck=false; inp.autocomplete='off';
+    row.appendChild(inp); consoleEl.appendChild(row); consoleEl.scrollTop=consoleEl.scrollHeight;
+    activeInput=inp; inp.focus();
+    inp.addEventListener('keydown',onPwKey);
+  }
+  function onPwKey(e){
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const val=activeInput.value; activeInput.removeEventListener('keydown',onPwKey); activeInput.remove(); activeInput=null;
+      submitPassword(val);
+    } else if(e.ctrlKey && (e.key==='c'||e.key==='C')){
+      e.preventDefault(); activeInput.remove(); activeInput=null;
+      setConn('dead'); sessionClosed('Connection closed.','You cancelled the login. The session was closed.');
+    }
+  }
+  function submitPassword(val){
+    if(val==='hunter2'){ passAttempts=0; setConn('live'); startSession(); return; }
+    passAttempts++;
+    if(passAttempts>=3){
+      writeLine('root@'+HOST+': Permission denied (publickey,password).','errc');
+      writeLine('Connection to '+HOST+' closed.','muted');
+      setConn('dead');
+      setTimeout(()=>sessionClosed('Too many failed attempts','The server rejected the login after 3 attempts and closed the connection.'),500);
+      return;
+    }
+    writeLine('Permission denied, please try again.','errc');
+    passwordPrompt();
+  }
+
+  /* ---- Active session ---- */
+  function startSession(){
+    sessionLive=true; cwd='~'; history=[]; histIdx=-1;
+    writeLine('Welcome to Ubuntu 24.04.1 LTS (GNU/Linux 6.8.0 x86_64)','muted');
+    writeLine('Last login: '+new Date().toUTCString()+' from 198.51.100.7','muted');
+    writeLine('Type '+esc('help')+' to see available demo commands.','muted');
+    writeLine('');
+    newPrompt(); armIdle();
+  }
+  function ps1(){ return `<span class="prompt-user">${esc(currentUser)}@web-01</span>:<span class="prompt-path">${esc(cwd)}</span># `; }
+  function newPrompt(){
+    mode='command';
+    const row=document.createElement('div'); row.className='line inputline';
+    row.innerHTML=`<span class="ps1">${ps1()}</span>`;
+    const inp=document.createElement('input'); inp.className='cmd-input'; inp.spellcheck=false; inp.autocomplete='off';
+    row.appendChild(inp); consoleEl.appendChild(row); consoleEl.scrollTop=consoleEl.scrollHeight;
+    activeInput=inp; inp.focus();
+    inp.addEventListener('keydown',onKey); inp.addEventListener('input',armIdle);
+  }
+  function freezeInput(){ if(!activeInput) return; const row=activeInput.parentElement,val=activeInput.value; activeInput.remove(); const s=document.createElement('span'); s.textContent=val; row.appendChild(s); activeInput=null; }
+
+  function onKey(e){
+    armIdle();
+    if(e.key==='Enter'){
+      e.preventDefault(); const val=activeInput.value;
+      if(val.trim()) history.push(val); histIdx=history.length;
+      freezeInput(); runCommand(val.trim());
+    } else if(e.key==='ArrowUp'){ e.preventDefault(); if(history.length&&histIdx>0){histIdx--;activeInput.value=history[histIdx];} }
+    else if(e.key==='ArrowDown'){ e.preventDefault(); if(histIdx<history.length-1){histIdx++;activeInput.value=history[histIdx];} else {histIdx=history.length;activeInput.value='';} }
+    else if(e.key==='Tab'){ e.preventDefault(); const cmds=['help','ls','pwd','whoami','clear','date','uname','cat','echo','apt','apt-get','wget','curl','exit']; const m=cmds.filter(c=>c.startsWith(activeInput.value)); if(m.length===1) activeInput.value=m[0]+' '; }
+    else if(e.ctrlKey&&(e.key==='l'||e.key==='L')){ e.preventDefault(); if(activeInput) activeInput.remove(); activeInput=null; consoleEl.innerHTML=''; newPrompt(); }
+    else if(e.ctrlKey&&(e.key==='c'||e.key==='C')){ if((window.getSelection()||'').toString()===''){ e.preventDefault(); const v=activeInput.value; freezeInput(); consoleEl.lastChild.querySelector('span:last-child').textContent=v+'^C'; newPrompt(); } }
+    else if(e.ctrlKey&&(e.key==='d'||e.key==='D')){ e.preventDefault(); freezeInput(); endSession('exit'); }
+  }
+
+  function runCommand(raw){
+    if(raw.startsWith('sudo ')) raw=raw.slice(5).trim(); // root already
+    const parts=raw.split(/\s+/), cmd=parts[0], rest=parts.slice(1), arg=rest.join(' ');
+    switch(cmd){
+      case '': break;
+      case 'help':
+        writeLine('Demo commands: '+esc('help ls pwd whoami date uname cat echo clear apt/apt-get wget exit'),'muted');
+        writeLine('Keys: ↑/↓ history · Tab complete · Ctrl+L clear · Ctrl+C cancel · Ctrl+D logout','muted'); break;
+      case 'ls': writeLine('app/   public_html/   logs/   backup.tar.gz   notes.txt'); break;
+      case 'pwd': writeLine('/root'); break;
+      case 'whoami': writeLine(currentUser); break;
+      case 'date': writeLine(new Date().toString()); break;
+      case 'uname': writeLine('Linux web-01 6.8.0-generic #1 SMP x86_64 GNU/Linux'); break;
+      case 'echo': writeLine(esc(arg)); break;
+      case 'cat':
+        if(rest[0]==='notes.txt') writeLine('Remember to renew the TLS cert before July.');
+        else writeLine('cat: '+esc(rest[0]||'')+': No such file or directory','errc'); break;
+      case 'clear': consoleEl.innerHTML=''; break;
+      case 'apt': case 'apt-get':
+        if(rest[0]==='update') return aptUpdate();
+        if(rest[0]==='install') return aptInstall(rest[1]);
+        if(rest[0]==='upgrade'){ writeLine('Reading package lists... Done'); writeLine('Calculating upgrade... Done'); writeLine('0 upgraded, 0 newly installed, 0 to remove.','ok'); break; }
+        writeLine('Usage: '+cmd+' [update|install <pkg>|upgrade]','muted'); break;
+      case 'wget': case 'curl': return downloadDemo();
+      case 'exit': case 'logout': freezeInput(); return endSession('exit');
+      default: writeLine(esc(cmd)+': command not found','errc');
+    }
+    newPrompt();
+  }
+
+  function aptUpdate(){
+    const lines=[['Hit:1 http://archive.ubuntu.com/ubuntu noble InRelease',''],['Get:2 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]',''],['Fetched 126 kB in 1s (98.4 kB/s)',''],['Reading package lists... Done',''],['Building dependency tree... Done',''],['12 packages can be upgraded. Run '+esc("'apt list --upgradable'")+' to see them.','ok']];
+    let i=0;(function n(){ if(i<lines.length){writeLine(lines[i][0],lines[i][1]);i++;setTimeout(n,230);} else newPrompt(); })();
+  }
+  function aptInstall(pkg){
+    if(!pkg){ writeLine('E: Specify a package, e.g. '+esc('apt install nginx'),'errc'); newPrompt(); return; }
+    const lines=[['Reading package lists... Done',''],['Building dependency tree... Done',''],['The following NEW packages will be installed:',''],['  '+pkg,''],['0 upgraded, 1 newly installed, 0 to remove and 12 not upgraded.',''],['Get:1 http://archive.ubuntu.com/ubuntu noble/main amd64 '+pkg+' amd64 [2,143 kB]',''],['Fetched 2,143 kB in 1s (1,980 kB/s)',''],['Setting up '+pkg+' ...',''],['Processing triggers for man-db (2.12.0-4) ...',''],[pkg+' installed successfully.','ok']];
+    let i=0;(function n(){ if(i<lines.length){writeLine(lines[i][0],lines[i][1]);i++;setTimeout(n,210);} else newPrompt(); })();
+  }
+  function downloadDemo(){
+    writeLine('Resolving wordpress.org... connected.','muted');
+    setTimeout(()=>writeLine('HTTP request sent, awaiting response... 200 OK',''),250);
+    setTimeout(()=>writeLine('Saving to: ‘latest.tar.gz’  (24.8M) ... done','muted'),550);
+    setTimeout(()=>{ writeLine('Finish setup at:','ok'); writeLine('<a href="https://web-01.bluehost.dev/wp-admin/install.php" target="_blank" rel="noopener">https://web-01.bluehost.dev/wp-admin/install.php</a>'); newPrompt(); },800);
+  }
+
+  consoleEl.addEventListener('mousedown',()=>setTimeout(()=>{ if(activeInput&&(window.getSelection()||'').toString()==='') activeInput.focus(); },0));
+
+  /* ---- Idle timeout flow ---- */
+  const IDLE_MS=30000, WARN_SECONDS=60;
+  function armIdle(){ if(!sessionLive) return; clearTimeout(idleTimer); clearTimeout(idleWarnTimer); if(idleCountdownTimer)clearInterval(idleCountdownTimer); $('#idleBanner').classList.remove('show'); setConn('live'); idleTimer=setTimeout(startIdleWarning,IDLE_MS); }
+  function startIdleWarning(){
+    if(!sessionLive) return; setConn('warn'); let s=WARN_SECONDS;
+    const banner=$('#idleBanner'); banner.classList.add('show');
+    banner.textContent=`Session will disconnect in ${s}s due to inactivity — press any key to stay`;
+    idleCountdownTimer=setInterval(()=>{ s--; banner.textContent=`Session will disconnect in ${s}s due to inactivity — press any key to stay`; if(s<=0){clearInterval(idleCountdownTimer);idleExpire();} },1000);
+  }
+  function idleExpire(){ sessionLive=false; clearTimers(); $('#idleBanner').classList.remove('show'); setConn('dead'); freezeInput(); $('#ovExpired').classList.add('show'); }
+  $('#trigIdle').addEventListener('click',()=>{ if(sessionLive){ clearTimeout(idleTimer); startIdleWarning(); } });
+  $('#reconnectExpired').addEventListener('click',()=>{ show('#terminal'); beginConnect('Reconnecting to '+HOST+' port 22...'); });
+
+  /* ---- Connection drop flow ---- */
+  $('#trigDrop').addEventListener('click',()=>{ if(sessionLive) dropConnection(); });
+  function dropConnection(){
+    sessionLive=false; clearTimers(); freezeInput(); setConn('dead'); $('#idleBanner').classList.remove('show');
+    $('#dropRing').style.display='block';
+    $('#dropTitle').textContent='Connection lost';
+    $('#dropSub').textContent='A network interruption ended the session. Attempting to reconnect…';
+    $('#reconnectDrop').style.display='none'; $('#ovDropped').classList.add('show');
+    dropTimer=setTimeout(()=>{ $('#dropRing').style.display='none'; $('#dropSub').textContent='Couldn’t re-establish the session automatically. The server closed it, so reconnecting asks for the root password again.'; $('#reconnectDrop').style.display='inline-flex'; },2600);
+  }
+  $('#reconnectDrop').addEventListener('click',()=>{ show('#terminal'); beginConnect('Reconnecting to '+HOST+' port 22...'); });
+
+  /* ---- Session end / closed / tab close ---- */
+  function endSession(reason){ sessionLive=false; clearTimers(); setConn('dead'); $('#idleBanner').classList.remove('show'); $('#endedTitle').textContent='Session ended'; $('#endedSub').textContent=reason==='exit'?'You logged out. The SSH session was terminated and cleaned up on the server.':'The tab was closed, so the SSH session was terminated and cleaned up on the server.'; $('#ovEnded').classList.add('show'); }
+  function sessionClosed(title,sub){ sessionLive=false; clearTimers(); $('#endedTitle').textContent=title; $('#endedSub').textContent=sub; $('#ovEnded').classList.add('show'); }
+  $('#startAgain').addEventListener('click',()=>{ show('#terminal'); beginConnect('Connecting to '+HOST+' port 22...'); });
+  $('#closeTab').addEventListener('click',()=>{ if(sessionLive) endSession('close'); setTimeout(()=>{ hideOverlays(); show('#dashboard'); },600); });
+
+  /* ---- Theme toggle ---- */
+  $('#themeBtn').addEventListener('click',()=>{ const light=term.classList.toggle('light'); $('#themeBtn').textContent=light?'🌗 Dark':'🌗 Light'; });
+
+  /* ---- copy toast ---- */
+  document.addEventListener('copy',()=>{ if(!term.classList.contains('active')) return; const t=$('#copyToast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1100); });
+
+  /* ---- unsupported browser demo (#unsupported) ---- */
+  if(location.hash==='#unsupported') show('#unsupported');
+  $('#backFromUnsupported').addEventListener('click',()=>{ location.hash=''; show('#dashboard'); });
+})();
+</script>

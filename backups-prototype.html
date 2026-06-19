@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bluehost VPS Backups — Interactive Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bh-navy: #0B243D;
+    --bh-blue: #2E6FF2;
+    --bh-blue-hover: #1B5AD4;
+    --bh-blue-light: #E8F0FE;
+    --bh-green: #00A63F;
+    --bh-green-light: #E6F9ED;
+    --bh-orange: #F5A623;
+    --bh-orange-light: #FFF5E0;
+    --bh-red: #D93025;
+    --bh-red-light: #FDE7E7;
+    --bh-gray-50: #F8F9FA;
+    --bh-gray-100: #F1F3F5;
+    --bh-gray-200: #E9ECEF;
+    --bh-gray-300: #DEE2E6;
+    --bh-gray-400: #ADB5BD;
+    --bh-gray-500: #6C757D;
+    --bh-gray-600: #495057;
+    --bh-gray-700: #343A40;
+    --bh-white: #FFFFFF;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bh-gray-50); color: var(--bh-gray-700); }
+
+  /* ── Flow Navigation ── */
+  .flow-nav {
+    background: var(--bh-navy);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    overflow-x: auto;
+  }
+  .flow-nav-label {
+    color: var(--bh-gray-400);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    padding: 16px 20px 16px 0;
+    white-space: nowrap;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    margin-right: 4px;
+  }
+  .flow-tab {
+    padding: 16px 18px;
+    color: rgba(255,255,255,0.55);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .flow-tab:hover { color: rgba(255,255,255,0.85); }
+  .flow-tab.active {
+    color: var(--bh-white);
+    border-bottom-color: var(--bh-blue);
+  }
+
+  /* ── Shared: Screen Container ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── Shared: Page Shell (Account Manager) ── */
+  .am-shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 100vh;
+  }
+  .am-sidebar {
+    background: var(--bh-white);
+    border-right: 1px solid var(--bh-gray-200);
+    padding: 24px 0;
+  }
+  .am-sidebar-logo {
+    padding: 0 20px 24px;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--bh-navy);
+    border-bottom: 1px solid var(--bh-gray-200);
+    margin-bottom: 16px;
+  }
+  .am-sidebar-section {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--bh-gray-400);
+    padding: 12px 20px 6px;
+  }
+  .am-sidebar-item {
+    padding: 9px 20px;
+    font-size: 13.5px;
+    color: var(--bh-gray-600);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.15s;
+  }
+  .am-sidebar-item:hover { background: var(--bh-gray-50); color: var(--bh-navy); }
+  .am-sidebar-item.active-nav {
+    background: var(--bh-blue-light);
+    color: var(--bh-blue);
+    font-weight: 600;
+    border-right: 3px solid var(--bh-blue);
+  }
+  .am-sidebar-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .am-main { padding: 32px 40px; max-width: 1000px; }
+  .am-main h1 { font-size: 22px; font-weight: 700; color: var(--bh-navy); margin-bottom: 4px; }
+  .am-main .subtitle { font-size: 14px; color: var(--bh-gray-500); margin-bottom: 28px; }
+
+  /* ── Shared: Cards ── */
+  .card {
+    background: var(--bh-white);
+    border: 1px solid var(--bh-gray-200);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .card-title { font-size: 15px; font-weight: 700; color: var(--bh-navy); }
+
+  /* ── Shared: Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--bh-blue); color: var(--bh-white); }
+  .btn-primary:hover { background: var(--bh-blue-hover); }
+  .btn-outline { background: transparent; border: 1.5px solid var(--bh-blue); color: var(--bh-blue); }
+  .btn-outline:hover { background: var(--bh-blue-light); }
+  .btn-danger { background: var(--bh-red); color: var(--bh-white); }
+  .btn-danger:hover { background: #C12A20; }
+  .btn-danger:disabled { background: var(--bh-gray-300); color: var(--bh-gray-500); cursor: not-allowed; }
+  .btn-sm { padding: 7px 14px; font-size: 12.5px; }
+  .btn-ghost { background: transparent; color: var(--bh-gray-500); }
+  .btn-ghost:hover { color: var(--bh-navy); background: var(--bh-gray-100); }
+
+  /* ── Shared: Status Badges ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-green { background: var(--bh-green-light); color: var(--bh-green); }
+  .badge-orange { background: var(--bh-orange-light); color: #B8860B; }
+  .badge-gray { background: var(--bh-gray-100); color: var(--bh-gray-500); }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .badge-green .badge-dot { background: var(--bh-green); }
+  .badge-orange .badge-dot { background: var(--bh-orange); }
+
+  /* ── Shared: Table ── */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--bh-gray-400);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--bh-gray-200);
+  }
+  .data-table td {
+    padding: 14px;
+    font-size: 13.5px;
+    color: var(--bh-gray-600);
+    border-bottom: 1px solid var(--bh-gray-100);
+    vertical-align: middle;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--bh-gray-50); }
+
+  /* ═══════════════════════════════════════════
+     FLOW 1: CONFIGURATOR
+     ═══════════════════════════════════════════ */
+  .config-shell {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 60px;
+  }
+  .config-shell h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--bh-navy);
+    margin-bottom: 4px;
+  }
+  .config-shell .subtitle { font-size: 14px; color: var(--bh-gray-500); margin-bottom: 28px; }
+  .config-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  /* Add-on cards */
+  .addon-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--bh-gray-500);
+    margin-bottom: 12px;
+  }
+  .addon-card {
+    background: var(--bh-white);
+    border: 1.5px solid var(--bh-gray-200);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .addon-card:hover { border-color: var(--bh-blue); }
+  .addon-card.selected {
+    border-color: var(--bh-blue);
+    background: var(--bh-blue-light);
+  }
+  .addon-checkbox {
+    width: 20px; height: 20px;
+    border: 2px solid var(--bh-gray-300);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .addon-card.selected .addon-checkbox {
+    background: var(--bh-blue);
+    border-color: var(--bh-blue);
+  }
+  .addon-checkbox svg { opacity: 0; transition: opacity 0.15s; }
+  .addon-card.selected .addon-checkbox svg { opacity: 1; }
+  .addon-body { flex: 1; }
+  .addon-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .addon-name { font-size: 15px; font-weight: 600; color: var(--bh-navy); }
+  .addon-price { font-size: 14px; font-weight: 700; color: var(--bh-navy); }
+  .addon-price span { font-size: 12px; font-weight: 400; color: var(--bh-gray-500); }
+  .addon-desc { font-size: 13px; color: var(--bh-gray-500); line-height: 1.5; }
+
+  /* Tier selector */
+  .tier-selector {
+    margin-top: 14px;
+    display: none;
+    gap: 10px;
+  }
+  .addon-card.selected .tier-selector { display: flex; }
+  .tier-option {
+    flex: 1;
+    border: 1.5px solid var(--bh-gray-200);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    cursor: pointer;
+    background: var(--bh-white);
+    transition: all 0.15s;
+  }
+  .tier-option:hover { border-color: var(--bh-blue); }
+  .tier-option.tier-selected {
+    border-color: var(--bh-blue);
+    background: var(--bh-white);
+    box-shadow: 0 0 0 1px var(--bh-blue);
+  }
+  .tier-option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+  }
+  .tier-option-name { font-size: 13px; font-weight: 600; color: var(--bh-navy); }
+  .tier-option-price { font-size: 13px; font-weight: 700; color: var(--bh-navy); }
+  .tier-option-detail { font-size: 11.5px; color: var(--bh-gray-500); }
+  .tier-option-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: var(--bh-blue);
+    color: white;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-left: 6px;
+  }
+
+  /* Cart sidebar */
+  .cart-sidebar {
+    background: var(--bh-white);
+    border: 1px solid var(--bh-gray-200);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 72px;
+  }
+  .cart-title { font-size: 16px; font-weight: 700; color: var(--bh-navy); margin-bottom: 18px; }
+  .cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    font-size: 13.5px;
+  }
+  .cart-item-name { color: var(--bh-gray-600); }
+  .cart-item-price { font-weight: 600; color: var(--bh-navy); }
+  .cart-divider { border: none; border-top: 1px solid var(--bh-gray-200); margin: 6px 0; }
+  .cart-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--bh-navy);
+  }
+  .cart-addon-remove {
+    font-size: 11px;
+    color: var(--bh-red);
+    cursor: pointer;
+    margin-left: 8px;
+  }
+  .cart-addon-remove:hover { text-decoration: underline; }
+  .cart-checkout {
+    width: 100%;
+    margin-top: 20px;
+    padding: 13px;
+    font-size: 15px;
+  }
+
+  /* ═══════════════════════════════════════════
+     FLOW 2/3/4: BACKUP MANAGEMENT PAGE
+     ═══════════════════════════════════════════ */
+  .status-banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    margin-bottom: 22px;
+  }
+  .status-banner-active { background: var(--bh-green-light); }
+  .status-banner-none { background: var(--bh-gray-100); }
+  .status-banner-icon {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .status-banner-active .status-banner-icon { background: var(--bh-green); }
+  .status-banner-none .status-banner-icon { background: var(--bh-gray-400); }
+  .status-banner-text h3 { font-size: 14px; font-weight: 600; color: var(--bh-navy); }
+  .status-banner-text p { font-size: 12.5px; color: var(--bh-gray-500); margin-top: 2px; }
+
+  .upgrade-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #EEF2FF 0%, #E8F0FE 100%);
+    border: 1px solid rgba(46,111,242,0.15);
+    border-radius: var(--radius);
+    margin-bottom: 22px;
+  }
+  .upgrade-banner-text { font-size: 13.5px; color: var(--bh-navy); }
+  .upgrade-banner-text strong { font-weight: 600; }
+
+  .backup-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .backup-meta-card {
+    padding: 16px;
+    background: var(--bh-gray-50);
+    border-radius: var(--radius);
+    border: 1px solid var(--bh-gray-200);
+  }
+  .backup-meta-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--bh-gray-400); margin-bottom: 6px; }
+  .backup-meta-value { font-size: 16px; font-weight: 700; color: var(--bh-navy); }
+  .backup-meta-value small { font-size: 12px; font-weight: 400; color: var(--bh-gray-500); }
+
+  /* ═══════════════════════════════════════════
+     CTB MODAL
+     ═══════════════════════════════════════════ */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(11,36,61,0.55);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal {
+    background: var(--bh-white);
+    border-radius: var(--radius-lg);
+    width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+  }
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--bh-gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-header h2 { font-size: 17px; font-weight: 700; color: var(--bh-navy); }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    background: var(--bh-gray-100);
+    border: none;
+    font-size: 18px;
+    color: var(--bh-gray-500);
+    transition: all 0.15s;
+  }
+  .modal-close:hover { background: var(--bh-gray-200); }
+  .modal-body { padding: 24px; }
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--bh-gray-200);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  /* CTB Tier comparison */
+  .ctb-tier-cards { display: flex; gap: 14px; margin-bottom: 12px; }
+  .ctb-tier {
+    flex: 1;
+    border: 1.5px solid var(--bh-gray-200);
+    border-radius: var(--radius);
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .ctb-tier:hover { border-color: var(--bh-blue); }
+  .ctb-tier.ctb-selected {
+    border-color: var(--bh-blue);
+    box-shadow: 0 0 0 1px var(--bh-blue);
+  }
+  .ctb-tier-name { font-size: 15px; font-weight: 700; color: var(--bh-navy); margin-bottom: 2px; }
+  .ctb-tier-price { font-size: 20px; font-weight: 700; color: var(--bh-navy); }
+  .ctb-tier-price span { font-size: 13px; font-weight: 400; color: var(--bh-gray-500); }
+  .ctb-tier-features { margin-top: 12px; list-style: none; }
+  .ctb-tier-features li {
+    font-size: 12.5px;
+    color: var(--bh-gray-600);
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .ctb-tier-features li svg { flex-shrink: 0; }
+  .ctb-radio {
+    position: absolute;
+    top: 14px; right: 14px;
+    width: 18px; height: 18px;
+    border: 2px solid var(--bh-gray-300);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ctb-tier.ctb-selected .ctb-radio {
+    border-color: var(--bh-blue);
+  }
+  .ctb-tier.ctb-selected .ctb-radio::after {
+    content: '';
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--bh-blue);
+  }
+
+  /* ═══════════════════════════════════════════
+     RESTORE MODAL
+     ═══════════════════════════════════════════ */
+  .restore-warning {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--bh-red-light);
+    border-radius: var(--radius);
+    margin-bottom: 18px;
+    border: 1px solid rgba(217,48,37,0.15);
+  }
+  .restore-warning-icon {
+    width: 24px; height: 24px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .restore-warning p { font-size: 13px; color: var(--bh-gray-700); line-height: 1.55; }
+  .restore-warning strong { color: var(--bh-red); }
+  .restore-detail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .restore-detail-item {
+    padding: 12px;
+    background: var(--bh-gray-50);
+    border-radius: var(--radius);
+  }
+  .restore-detail-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--bh-gray-400); margin-bottom: 4px; }
+  .restore-detail-value { font-size: 14px; font-weight: 600; color: var(--bh-navy); }
+
+  .restore-confirm-input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--bh-gray-300);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .restore-confirm-input:focus { border-color: var(--bh-blue); }
+  .restore-confirm-input.confirmed { border-color: var(--bh-red); }
+  .restore-confirm-label {
+    font-size: 13px;
+    color: var(--bh-gray-600);
+    margin-bottom: 8px;
+  }
+
+  /* ═══════════════════════════════════════════
+     RESTORE IN PROGRESS OVERLAY
+     ═══════════════════════════════════════════ */
+  .restore-progress {
+    text-align: center;
+    padding: 40px 24px;
+  }
+  .restore-spinner {
+    width: 56px; height: 56px;
+    border: 4px solid var(--bh-gray-200);
+    border-top-color: var(--bh-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .restore-progress h3 { font-size: 17px; font-weight: 700; color: var(--bh-navy); margin-bottom: 6px; }
+  .restore-progress p { font-size: 13px; color: var(--bh-gray-500); }
+  .restore-progress .eta { font-weight: 600; color: var(--bh-navy); margin-top: 12px; font-size: 14px; }
+  .restore-progress-bar {
+    width: 280px;
+    height: 6px;
+    background: var(--bh-gray-200);
+    border-radius: 3px;
+    margin: 16px auto 0;
+    overflow: hidden;
+  }
+  .restore-progress-fill {
+    height: 100%;
+    background: var(--bh-blue);
+    border-radius: 3px;
+    animation: progress 8s ease-in-out forwards;
+  }
+  @keyframes progress {
+    0% { width: 0%; }
+    30% { width: 35%; }
+    60% { width: 65%; }
+    80% { width: 85%; }
+    100% { width: 100%; }
+  }
+
+  /* ── Success toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bh-navy);
+    color: var(--bh-white);
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    font-weight: 500;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow-lg);
+    z-index: 300;
+    animation: slideUp 0.3s ease;
+  }
+  .toast.visible { display: flex; }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* ── Upgrade-only modal adjustments ── */
+  .upgrade-highlight {
+    background: linear-gradient(135deg, #EEF2FF 0%, #E8F0FE 100%);
+    border: 1px solid rgba(46,111,242,0.12);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 18px;
+  }
+  .upgrade-highlight h4 { font-size: 14px; font-weight: 600; color: var(--bh-navy); margin-bottom: 8px; }
+  .upgrade-compare {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+  }
+  .upgrade-compare-tier { text-align: center; }
+  .upgrade-compare-tier .label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--bh-gray-400); margin-bottom: 4px; }
+  .upgrade-compare-tier .name { font-size: 14px; font-weight: 700; color: var(--bh-navy); }
+  .upgrade-compare-arrow { color: var(--bh-blue); font-size: 20px; }
+
+  /* No-backup empty state */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+  }
+  .empty-state-icon {
+    width: 72px; height: 72px;
+    background: var(--bh-gray-100);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .empty-state h3 { font-size: 17px; font-weight: 700; color: var(--bh-navy); margin-bottom: 6px; }
+  .empty-state p { font-size: 13.5px; color: var(--bh-gray-500); margin-bottom: 20px; max-width: 400px; margin-left: auto; margin-right: auto; line-height: 1.55; }
+
+  /* VPS plan selector bar */
+  .plan-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 18px;
+    background: var(--bh-white);
+    border: 1px solid var(--bh-gray-200);
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+  }
+  .plan-bar-label { font-size: 12px; font-weight: 600; color: var(--bh-gray-400); text-transform: uppercase; letter-spacing: 0.6px; }
+  .plan-bar-name { font-size: 14px; font-weight: 600; color: var(--bh-navy); }
+  .plan-bar-specs { font-size: 12px; color: var(--bh-gray-500); margin-left: auto; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ FLOW NAV ══════════════ -->
+<div class="flow-nav">
+  <div class="flow-nav-label">Prototype</div>
+  <div class="flow-tab active" onclick="showScreen('configurator')">1 · Configurator</div>
+  <div class="flow-tab" onclick="showScreen('backup-active')">2 · Backups (Active)</div>
+  <div class="flow-tab" onclick="showScreen('backup-empty')">3 · CTB — No Backup</div>
+  <div class="flow-tab" onclick="showScreen('upgrade')">4 · Upgrade Tier</div>
+  <div class="flow-tab" onclick="showScreen('restore')">5 · Restore</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FLOW 1: CONFIGURATOR
+     ══════════════════════════════════════════════════════ -->
+<div id="screen-configurator" class="screen active">
+  <div class="config-shell">
+    <h1>Configure Your VPS</h1>
+    <p class="subtitle">Self-Managed VPS — Standard 2 · 2 vCPU, 4 GB RAM, 120 GB NVMe</p>
+    <div class="config-layout">
+      <div>
+        <!-- VPS Plan (static) -->
+        <div class="addon-section-title">Your Plan</div>
+        <div class="addon-card selected" style="cursor:default; pointer-events:none;">
+          <div class="addon-checkbox">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="addon-body">
+            <div class="addon-top">
+              <div class="addon-name">Standard 2 — Self-Managed VPS</div>
+              <div class="addon-price">$29.99 <span>/mo</span></div>
+            </div>
+            <div class="addon-desc">2 vCPU · 4 GB RAM · 120 GB NVMe SSD · 4 TB Transfer</div>
+          </div>
+        </div>
+
+        <div class="addon-section-title" style="margin-top:24px;">Add-ons</div>
+
+        <!-- Backup Add-on -->
+        <div class="addon-card" id="backup-addon" onclick="toggleBackupAddon()">
+          <div class="addon-checkbox">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="addon-body">
+            <div class="addon-top">
+              <div class="addon-name">🛡️ Backups</div>
+              <div class="addon-price" id="backup-addon-price">from $3.99 <span>/mo</span></div>
+            </div>
+            <div class="addon-desc">Automated off-server OS backups. Full-server restore. Choose weekly or daily.</div>
+            <div class="tier-selector" id="tier-selector">
+              <div class="tier-option tier-selected" id="tier-weekly" onclick="event.stopPropagation(); selectTier('weekly')">
+                <div class="tier-option-header">
+                  <div class="tier-option-name">Weekly</div>
+                  <div class="tier-option-price">$3.99/mo</div>
+                </div>
+                <div class="tier-option-detail">4 rolling backups · ~4 weeks coverage</div>
+              </div>
+              <div class="tier-option" id="tier-daily" onclick="event.stopPropagation(); selectTier('daily')">
+                <div class="tier-option-header">
+                  <div class="tier-option-name">Daily <span class="tier-option-badge">Popular</span></div>
+                  <div class="tier-option-price">$6.99/mo</div>
+                </div>
+                <div class="tier-option-detail">7 daily + 2 weekly · ~3 weeks coverage</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Other add-ons (decorative) -->
+        <div class="addon-card" style="opacity:0.55; pointer-events:none;">
+          <div class="addon-checkbox"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="addon-body">
+            <div class="addon-top">
+              <div class="addon-name">DDoS Protection</div>
+              <div class="addon-price">$4.99 <span>/mo</span></div>
+            </div>
+            <div class="addon-desc">Advanced L3/L4/L7 protection for your VPS.</div>
+          </div>
+        </div>
+        <div class="addon-card" style="opacity:0.55; pointer-events:none;">
+          <div class="addon-checkbox"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="addon-body">
+            <div class="addon-top">
+              <div class="addon-name">Monitoring</div>
+              <div class="addon-price">$2.99 <span>/mo</span></div>
+            </div>
+            <div class="addon-desc">Uptime & resource monitoring with alerting.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cart Sidebar -->
+      <div class="cart-sidebar">
+        <div class="cart-title">Order Summary</div>
+        <div class="cart-item">
+          <span class="cart-item-name">Standard 2 VPS</span>
+          <span class="cart-item-price">$29.99</span>
+        </div>
+        <div id="cart-backup-line" style="display:none;">
+          <div class="cart-item">
+            <span class="cart-item-name" id="cart-backup-name">Weekly Backups <span class="cart-addon-remove" onclick="toggleBackupAddon()">Remove</span></span>
+            <span class="cart-item-price" id="cart-backup-price">$3.99</span>
+          </div>
+        </div>
+        <hr class="cart-divider">
+        <div class="cart-total">
+          <span>Total</span>
+          <span id="cart-total">$29.99/mo</span>
+        </div>
+        <button class="btn btn-primary cart-checkout">Continue to Checkout →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FLOW 2: BACKUP MANAGEMENT PAGE (Active — Weekly Tier)
+     ══════════════════════════════════════════════════════ -->
+<div id="screen-backup-active" class="screen">
+  <div class="am-shell">
+    <!-- Sidebar -->
+    <div class="am-sidebar">
+      <div class="am-sidebar-logo">bluehost</div>
+      <div class="am-sidebar-section">Server</div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>
+        Overview
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06A1.65 1.65 0 0015 19.4V20a2 2 0 01-4 0v-.09A1.65 1.65 0 009 18.58l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 006.6 15H6a2 2 0 010-4h.09A1.65 1.65 0 007.42 9l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 0012 6.6V6a2 2 0 014 0v.09a1.65 1.65 0 001.82.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 11H20a2 2 0 010 4h-.6z"/></svg>
+        Settings
+      </div>
+      <div class="am-sidebar-section">Data Protection</div>
+      <div class="am-sidebar-item active-nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Backups
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Snapshots
+      </div>
+      <div class="am-sidebar-section">Network</div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        DNS
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
+        Firewall
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="am-main">
+      <h1>Backups</h1>
+      <p class="subtitle">Manage automated OS-level backups for your VPS.</p>
+
+      <!-- Plan bar -->
+      <div class="plan-bar">
+        <div class="plan-bar-label">Server</div>
+        <div class="plan-bar-name">vps-prod-01</div>
+        <div class="plan-bar-specs">Standard 2 · 2 vCPU · 4 GB RAM · 120 GB NVMe</div>
+      </div>
+
+      <!-- Status Banner -->
+      <div class="status-banner status-banner-active">
+        <div class="status-banner-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="status-banner-text" style="flex:1">
+          <h3 id="f2-status-title">Weekly Backups — Active</h3>
+          <p id="f2-status-subtitle">Next backup scheduled: Jun 22, 2026 at 03:00 UTC · 4 rolling backups retained</p>
+        </div>
+        <button class="btn btn-ghost btn-sm">Pause Backups</button>
+      </div>
+
+      <!-- Upgrade Banner -->
+      <div class="upgrade-banner" id="f2-upgrade-banner">
+        <div class="upgrade-banner-text">
+          <strong>Need more protection?</strong> Upgrade to Daily Backups for 9 restore points and ~3 weeks of coverage.
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="showModal('upgrade-modal')">Upgrade to Daily →</button>
+      </div>
+
+      <!-- Backup Stats -->
+      <div class="backup-meta-grid">
+        <div class="backup-meta-card">
+          <div class="backup-meta-label">Current Tier</div>
+          <div class="backup-meta-value" id="f2-tier-value">Weekly</div>
+        </div>
+        <div class="backup-meta-card">
+          <div class="backup-meta-label">Backups Available</div>
+          <div class="backup-meta-value" id="f2-backups-value">3 <small>of 4</small></div>
+        </div>
+        <div class="backup-meta-card">
+          <div class="backup-meta-label">Total Storage Used</div>
+          <div class="backup-meta-value">18.4 <small>GB</small></div>
+        </div>
+        <div class="backup-meta-card">
+          <div class="backup-meta-label">Last Backup</div>
+          <div class="backup-meta-value">Jun 15 <small>03:12 UTC</small></div>
+        </div>
+      </div>
+
+      <!-- Backup List -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Available Backups</div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Type</th>
+              <th>Size</th>
+              <th>OS Image</th>
+              <th>Status</th>
+              <th style="text-align:right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600; color:var(--bh-navy);">Jun 15, 2026 · 03:12 UTC</td>
+              <td>Weekly</td>
+              <td>6.2 GB</td>
+              <td>Ubuntu 24.04 LTS</td>
+              <td><span class="badge badge-green"><span class="badge-dot"></span> Completed</span></td>
+              <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="showScreen('restore')">Restore</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600; color:var(--bh-navy);">Jun 8, 2026 · 03:08 UTC</td>
+              <td>Weekly</td>
+              <td>6.1 GB</td>
+              <td>Ubuntu 24.04 LTS</td>
+              <td><span class="badge badge-green"><span class="badge-dot"></span> Completed</span></td>
+              <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="showScreen('restore')">Restore</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600; color:var(--bh-navy);">Jun 1, 2026 · 03:15 UTC</td>
+              <td>Weekly (Full)</td>
+              <td>6.1 GB</td>
+              <td>Ubuntu 24.04 LTS</td>
+              <td><span class="badge badge-green"><span class="badge-dot"></span> Completed</span></td>
+              <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="showScreen('restore')">Restore</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FLOW 3: CTB — NO BACKUP (Empty State)
+     ══════════════════════════════════════════════════════ -->
+<div id="screen-backup-empty" class="screen">
+  <div class="am-shell">
+    <div class="am-sidebar">
+      <div class="am-sidebar-logo">bluehost</div>
+      <div class="am-sidebar-section">Server</div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>
+        Overview
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06A1.65 1.65 0 0015 19.4V20a2 2 0 01-4 0v-.09A1.65 1.65 0 009 18.58l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 006.6 15H6a2 2 0 010-4h.09A1.65 1.65 0 007.42 9l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 0012 6.6V6a2 2 0 014 0v.09a1.65 1.65 0 001.82.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 11H20a2 2 0 010 4h-.6z"/></svg>
+        Settings
+      </div>
+      <div class="am-sidebar-section">Data Protection</div>
+      <div class="am-sidebar-item active-nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Backups
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Snapshots
+      </div>
+      <div class="am-sidebar-section">Network</div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        DNS
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
+        Firewall
+      </div>
+    </div>
+    <div class="am-main">
+      <h1>Backups</h1>
+      <p class="subtitle">Manage automated OS-level backups for your VPS.</p>
+      <div class="plan-bar">
+        <div class="plan-bar-label">Server</div>
+        <div class="plan-bar-name">vps-prod-01</div>
+        <div class="plan-bar-specs">Standard 2 · 2 vCPU · 4 GB RAM · 120 GB NVMe</div>
+      </div>
+      <div class="status-banner status-banner-none">
+        <div class="status-banner-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="status-banner-text">
+          <h3>No Backup Plan Active</h3>
+          <p>Your VPS currently has no automated backups. Add one to protect your data.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="empty-state">
+          <div class="empty-state-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ADB5BD" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <h3>Protect your server with automated backups</h3>
+          <p>Backups capture your full server state and store it off-server. Recover from accidental deletions, failed upgrades, or misconfigurations in minutes.</p>
+          <button class="btn btn-primary" onclick="showModal('ctb-modal')">Get Backups →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FLOW 4: UPGRADE (Active Weekly → shows upgrade flow)
+     ══════════════════════════════════════════════════════ -->
+<div id="screen-upgrade" class="screen">
+  <div class="am-shell">
+    <div class="am-sidebar">
+      <div class="am-sidebar-logo">bluehost</div>
+      <div class="am-sidebar-section">Server</div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>
+        Overview
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06A1.65 1.65 0 0015 19.4V20a2 2 0 01-4 0v-.09A1.65 1.65 0 009 18.58l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 006.6 15H6a2 2 0 010-4h.09A1.65 1.65 0 007.42 9l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 0012 6.6V6a2 2 0 014 0v.09a1.65 1.65 0 001.82.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 11H20a2 2 0 010 4h-.6z"/></svg>
+        Settings
+      </div>
+      <div class="am-sidebar-section">Data Protection</div>
+      <div class="am-sidebar-item active-nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Backups
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Snapshots
+      </div>
+      <div class="am-sidebar-section">Network</div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        DNS
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
+        Firewall
+      </div>
+    </div>
+    <div class="am-main">
+      <h1>Backups</h1>
+      <p class="subtitle">Manage automated OS-level backups for your VPS.</p>
+      <div class="plan-bar">
+        <div class="plan-bar-label">Server</div>
+        <div class="plan-bar-name">vps-prod-01</div>
+        <div class="plan-bar-specs">Standard 2 · 2 vCPU · 4 GB RAM · 120 GB NVMe</div>
+      </div>
+      <div class="status-banner status-banner-active">
+        <div class="status-banner-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="status-banner-text" style="flex:1">
+          <h3 id="f4-status-title">Weekly Backups — Active</h3>
+          <p id="f4-status-subtitle">Next backup scheduled: Jun 22, 2026 at 03:00 UTC</p>
+        </div>
+        <button class="btn btn-ghost btn-sm">Pause Backups</button>
+      </div>
+      <div class="upgrade-banner" id="f4-upgrade-banner">
+        <div class="upgrade-banner-text">
+          <strong>Need more protection?</strong> Upgrade to Daily Backups for 9 restore points and ~3 weeks of coverage.
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="showModal('upgrade-modal')">Upgrade to Daily →</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Available Backups</div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>Created</th><th>Type</th><th>Size</th><th>OS Image</th><th>Status</th><th style="text-align:right;">Action</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600;color:var(--bh-navy);">Jun 15, 2026 · 03:12 UTC</td><td>Weekly</td><td>6.2 GB</td><td>Ubuntu 24.04 LTS</td>
+              <td><span class="badge badge-green"><span class="badge-dot"></span> Completed</span></td>
+              <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="showScreen('restore')">Restore</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;color:var(--bh-navy);">Jun 8, 2026 · 03:08 UTC</td><td>Weekly</td><td>6.1 GB</td><td>Ubuntu 24.04 LTS</td>
+              <td><span class="badge badge-green"><span class="badge-dot"></span> Completed</span></td>
+              <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="showScreen('restore')">Restore</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FLOW 5: RESTORE
+     ══════════════════════════════════════════════════════ -->
+<div id="screen-restore" class="screen">
+  <div class="am-shell">
+    <div class="am-sidebar">
+      <div class="am-sidebar-logo">bluehost</div>
+      <div class="am-sidebar-section">Server</div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>
+        Overview
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06A1.65 1.65 0 0015 19.4V20a2 2 0 01-4 0v-.09A1.65 1.65 0 009 18.58l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 006.6 15H6a2 2 0 010-4h.09A1.65 1.65 0 007.42 9l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 0012 6.6V6a2 2 0 014 0v.09a1.65 1.65 0 001.82.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 11H20a2 2 0 010 4h-.6z"/></svg>
+        Settings
+      </div>
+      <div class="am-sidebar-section">Data Protection</div>
+      <div class="am-sidebar-item active-nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Backups
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Snapshots
+      </div>
+      <div class="am-sidebar-section">Network</div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        DNS
+      </div>
+      <div class="am-sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
+        Firewall
+      </div>
+    </div>
+    <div class="am-main">
+      <h1>Backups</h1>
+      <p class="subtitle">Manage automated OS-level backups for your VPS.</p>
+      <div class="plan-bar">
+        <div class="plan-bar-label">Server</div>
+        <div class="plan-bar-name">vps-prod-01</div>
+        <div class="plan-bar-specs">Standard 2 · 2 vCPU · 4 GB RAM · 120 GB NVMe</div>
+      </div>
+      <div class="status-banner status-banner-active">
+        <div class="status-banner-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="status-banner-text" style="flex:1">
+          <h3>Weekly Backups — Active</h3>
+          <p>Next backup scheduled: Jun 22, 2026 at 03:00 UTC</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Available Backups</div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>Created</th><th>Type</th><th>Size</th><th>OS Image</th><th>Status</th><th style="text-align:right;">Action</th></tr>
+          </thead>
+          <tbody>
+            <tr style="background:rgba(46,111,242,0.04);">
+              <td style="font-weight:600;color:var(--bh-navy);">Jun 15, 2026 · 03:12 UTC</td><td>Weekly</td><td>6.2 GB</td><td>Ubuntu 24.04 LTS</td>
+              <td><span class="badge badge-green"><span class="badge-dot"></span> Completed</span></td>
+              <td style="text-align:right;"><button class="btn btn-danger btn-sm" onclick="showModal('restore-modal')">Restore ↺</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;color:var(--bh-navy);">Jun 8, 2026 · 03:08 UTC</td><td>Weekly</td><td>6.1 GB</td><td>Ubuntu 24.04 LTS</td>
+              <td><span class="badge badge-green"><span class="badge-dot"></span> Completed</span></td>
+              <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="showModal('restore-modal')">Restore</button></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;color:var(--bh-navy);">Jun 1, 2026 · 03:15 UTC</td><td>Weekly (Full)</td><td>6.1 GB</td><td>Ubuntu 24.04 LTS</td>
+              <td><span class="badge badge-green"><span class="badge-dot"></span> Completed</span></td>
+              <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="showModal('restore-modal')">Restore</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     MODALS
+     ══════════════════════════════════════════════════════ -->
+
+<!-- CTB Modal: Get Backups (no backup purchased) -->
+<div class="modal-overlay" id="ctb-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Add Backups to Your VPS</h2>
+      <button class="modal-close" onclick="hideModal('ctb-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13.5px; color:var(--bh-gray-500); margin-bottom:18px;">Select a backup tier for <strong style="color:var(--bh-navy);">vps-prod-01</strong>. Billed monthly.</p>
+      <div class="ctb-tier-cards">
+        <div class="ctb-tier ctb-selected" id="ctb-weekly" onclick="selectCtbTier('weekly')">
+          <div class="ctb-radio"></div>
+          <div class="ctb-tier-name">Weekly</div>
+          <div class="ctb-tier-price">$3.99 <span>/mo</span></div>
+          <ul class="ctb-tier-features">
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> 1 backup per week</li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> 4 restore points retained</li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> ~4 weeks of coverage</li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Off-server, encrypted</li>
+          </ul>
+        </div>
+        <div class="ctb-tier" id="ctb-daily" onclick="selectCtbTier('daily')">
+          <div class="ctb-radio"></div>
+          <div class="ctb-tier-name">Daily <span class="tier-option-badge" style="vertical-align:middle;">Recommended</span></div>
+          <div class="ctb-tier-price">$6.99 <span>/mo</span></div>
+          <ul class="ctb-tier-features">
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> 1 backup per day</li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> 9 restore points (7+2)</li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> ~3 weeks of coverage</li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Off-server, encrypted</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="hideModal('ctb-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="hideModal('ctb-modal'); showToast('Backups activated! First backup starts within 24 hours.')">Purchase Backups</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upgrade Modal: Weekly → Daily -->
+<div class="modal-overlay" id="upgrade-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Upgrade to Daily Backups</h2>
+      <button class="modal-close" onclick="hideModal('upgrade-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="upgrade-highlight">
+        <div class="upgrade-compare">
+          <div class="upgrade-compare-tier">
+            <div class="label">Current</div>
+            <div class="name">Weekly · $3.99/mo</div>
+          </div>
+          <div class="upgrade-compare-arrow">→</div>
+          <div class="upgrade-compare-tier">
+            <div class="label">Upgrading to</div>
+            <div class="name" style="color:var(--bh-blue);">Daily · $6.99/mo</div>
+          </div>
+        </div>
+      </div>
+      <h4 style="font-size:14px; font-weight:600; color:var(--bh-navy); margin-bottom:10px;">What you'll get</h4>
+      <ul style="list-style:none; margin-bottom:16px;">
+        <li style="font-size:13px; color:var(--bh-gray-600); padding:5px 0; display:flex; align-items:center; gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Daily backups instead of weekly
+        </li>
+        <li style="font-size:13px; color:var(--bh-gray-600); padding:5px 0; display:flex; align-items:center; gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          9 restore points (7 daily + 2 weekly) vs 4
+        </li>
+        <li style="font-size:13px; color:var(--bh-gray-600); padding:5px 0; display:flex; align-items:center; gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Max 24h data loss window vs 7 days
+        </li>
+      </ul>
+      <div style="padding:12px 14px; background:var(--bh-gray-50); border-radius:var(--radius); font-size:13px; color:var(--bh-gray-500);">
+        Additional charge: <strong style="color:var(--bh-navy);">$3.00/mo</strong> (prorated for current billing cycle). Your existing weekly backups will be preserved.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="hideModal('upgrade-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmUpgrade()">Confirm Upgrade</button>
+    </div>
+  </div>
+</div>
+
+<!-- Restore Modal -->
+<div class="modal-overlay" id="restore-modal">
+  <div class="modal">
+    <div id="restore-confirm-view">
+      <div class="modal-header">
+        <h2>Restore from Backup</h2>
+        <button class="modal-close" onclick="hideModal('restore-modal'); resetRestore()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="restore-warning">
+          <div class="restore-warning-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D93025" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <p>This will <strong>overwrite all current data</strong> on your VPS. Your server will be restored to the backup from <strong>Jun 15, 2026 at 03:12 UTC</strong>. All changes made after this point will be permanently lost. <strong>This action cannot be undone.</strong></p>
+        </div>
+        <div class="restore-detail">
+          <div class="restore-detail-item">
+            <div class="restore-detail-label">Backup Date</div>
+            <div class="restore-detail-value">Jun 15, 2026 · 03:12 UTC</div>
+          </div>
+          <div class="restore-detail-item">
+            <div class="restore-detail-label">Backup Size</div>
+            <div class="restore-detail-value">6.2 GB</div>
+          </div>
+          <div class="restore-detail-item">
+            <div class="restore-detail-label">OS Image</div>
+            <div class="restore-detail-value">Ubuntu 24.04 LTS</div>
+          </div>
+          <div class="restore-detail-item">
+            <div class="restore-detail-label">Expected Restore Time</div>
+            <div class="restore-detail-value">< 2 minutes</div>
+          </div>
+        </div>
+        <div class="restore-confirm-label">Type <strong style="color:var(--bh-red);">Restore</strong> to confirm</div>
+        <input class="restore-confirm-input" id="restore-input" type="text" placeholder="Type 'Restore' here" oninput="checkRestoreInput()" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="hideModal('restore-modal'); resetRestore()">Cancel</button>
+        <button class="btn btn-danger" id="restore-btn" disabled onclick="initiateRestore()">Restore Server</button>
+      </div>
+    </div>
+    <div id="restore-progress-view" style="display:none;">
+      <div class="modal-header">
+        <h2>Restoring Server…</h2>
+      </div>
+      <div class="modal-body">
+        <div class="restore-progress">
+          <div class="restore-spinner"></div>
+          <h3>Restore in progress</h3>
+          <p>Your VPS is being restored to Jun 15, 2026 · 03:12 UTC.<br>SSH, panel, and API access are locked until completion.</p>
+          <div class="restore-progress-bar"><div class="restore-progress-fill"></div></div>
+          <div class="eta">Estimated time remaining: < 2 min</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Screen Navigation ──
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    document.querySelectorAll('.flow-tab').forEach(t => t.classList.remove('active'));
+    const map = { configurator: 0, 'backup-active': 1, 'backup-empty': 2, upgrade: 3, restore: 4 };
+    document.querySelectorAll('.flow-tab')[map[id]].classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  // ── Flow 1: Configurator ──
+  let backupAddonActive = false;
+  let selectedTier = 'weekly';
+  const tierPrices = { weekly: 3.99, daily: 6.99 };
+
+  function toggleBackupAddon() {
+    backupAddonActive = !backupAddonActive;
+    const card = document.getElementById('backup-addon');
+    const cartLine = document.getElementById('cart-backup-line');
+    card.classList.toggle('selected', backupAddonActive);
+    cartLine.style.display = backupAddonActive ? 'block' : 'none';
+    updateCart();
+  }
+
+  function selectTier(tier) {
+    selectedTier = tier;
+    document.getElementById('tier-weekly').classList.toggle('tier-selected', tier === 'weekly');
+    document.getElementById('tier-daily').classList.toggle('tier-selected', tier === 'daily');
+    updateCart();
+  }
+
+  function updateCart() {
+    const price = tierPrices[selectedTier];
+    const name = selectedTier === 'weekly' ? 'Weekly Backups' : 'Daily Backups';
+    document.getElementById('cart-backup-name').innerHTML = name + ' <span class="cart-addon-remove" onclick="toggleBackupAddon()">Remove</span>';
+    document.getElementById('cart-backup-price').textContent = '$' + price.toFixed(2);
+    document.getElementById('backup-addon-price').innerHTML = '$' + price.toFixed(2) + ' <span>/mo</span>';
+    const total = 29.99 + (backupAddonActive ? price : 0);
+    document.getElementById('cart-total').textContent = '$' + total.toFixed(2) + '/mo';
+  }
+
+  // ── CTB Tier Selection ──
+  function selectCtbTier(tier) {
+    document.getElementById('ctb-weekly').classList.toggle('ctb-selected', tier === 'weekly');
+    document.getElementById('ctb-daily').classList.toggle('ctb-selected', tier === 'daily');
+  }
+
+  // ── Upgrade Confirmation ──
+  function confirmUpgrade() {
+    hideModal('upgrade-modal');
+
+    // Update Flow 2 (Backups Active) screen
+    document.getElementById('f2-status-title').textContent = 'Daily Backups — Active';
+    document.getElementById('f2-status-subtitle').textContent = 'Next backup scheduled: Jun 20, 2026 at 03:00 UTC · 9 restore points retained (7 daily + 2 weekly)';
+    document.getElementById('f2-upgrade-banner').style.display = 'none';
+    document.getElementById('f2-tier-value').textContent = 'Daily';
+    document.getElementById('f2-backups-value').innerHTML = '3 <small>of 9</small>';
+
+    // Update Flow 4 (Upgrade) screen
+    document.getElementById('f4-status-title').textContent = 'Daily Backups — Active';
+    document.getElementById('f4-status-subtitle').textContent = 'Next backup scheduled: Jun 20, 2026 at 03:00 UTC · 9 restore points retained (7 daily + 2 weekly)';
+    document.getElementById('f4-upgrade-banner').style.display = 'none';
+
+    showToast('Upgraded to Daily Backups! Daily schedule starts tonight.');
+  }
+
+  // ── Modals ──
+  function showModal(id) {
+    document.getElementById(id).classList.add('visible');
+  }
+  function hideModal(id) {
+    document.getElementById(id).classList.remove('visible');
+  }
+
+  // ── Restore ──
+  function checkRestoreInput() {
+    const val = document.getElementById('restore-input').value;
+    const btn = document.getElementById('restore-btn');
+    const match = val.toLowerCase() === 'restore';
+    btn.disabled = !match;
+    document.getElementById('restore-input').classList.toggle('confirmed', match);
+  }
+
+  function initiateRestore() {
+    document.getElementById('restore-confirm-view').style.display = 'none';
+    document.getElementById('restore-progress-view').style.display = 'block';
+    // Simulate completion
+    setTimeout(() => {
+      hideModal('restore-modal');
+      resetRestore();
+      showToast('Restore complete. Your VPS has been restored to Jun 15, 2026.');
+    }, 8500);
+  }
+
+  function resetRestore() {
+    document.getElementById('restore-confirm-view').style.display = 'block';
+    document.getElementById('restore-progress-view').style.display = 'none';
+    document.getElementById('restore-input').value = '';
+    document.getElementById('restore-btn').disabled = true;
+    document.getElementById('restore-input').classList.remove('confirmed');
+  }
+
+  // ── Toast ──
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00A63F" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> ' + msg;
+    t.classList.add('visible');
+    setTimeout(() => t.classList.remove('visible'), 4000);
+  }
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('visible');
+        resetRestore();
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
