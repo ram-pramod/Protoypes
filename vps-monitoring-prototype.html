@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VPS Monitoring — Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#eef1f6; --surface:#ffffff; --surface-2:#f7f9fc;
+    --ink:#0e1b2e; --ink-2:#445268; --ink-3:#7a879b; --line:#e2e8f1;
+    --brand:#2563eb; --brand-dark:#1d4ed8; --brand-soft:#e7efff;
+    --ok:#16a34a; --ok-soft:#e7f6ec;
+    --warn:#d97706; --warn-soft:#fdf0dd;
+    --crit:#dc2626; --crit-soft:#fbe7e7;
+    --net-in:#2563eb; --net-out:#f59e0b; --io-read:#0891b2; --io-write:#db2777;
+    --radius:10px; --shadow:0 1px 2px rgba(14,27,46,.06),0 4px 16px rgba(14,27,46,.05);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:Inter,system-ui,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+  button{font-family:inherit;cursor:pointer}
+  a{color:var(--brand);text-decoration:none}
+
+  /* prototype control bar */
+  .proto-bar{position:sticky;top:0;z-index:60;background:var(--ink);color:#dbe4f3;
+    display:flex;align-items:center;gap:14px;padding:9px 18px;flex-wrap:wrap;font-size:12.5px}
+  .proto-bar strong{color:#fff;letter-spacing:.02em;font-weight:600}
+  .proto-bar .tag{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#8aa0c4;
+    border:1px solid #2c3d57;border-radius:4px;padding:2px 6px}
+  .seg{display:inline-flex;background:#1a2942;border:1px solid #2c3d57;border-radius:7px;padding:3px}
+  .seg button{background:transparent;border:0;color:#aab9d2;padding:5px 11px;border-radius:5px;font-size:12px;font-weight:500}
+  .seg button.on{background:var(--brand);color:#fff}
+  .proto-bar .spacer{flex:1}
+  .linkbtn{background:transparent;border:1px solid #2c3d57;color:#cdd9ec;padding:5px 11px;border-radius:6px;font-size:12px}
+  .linkbtn:hover{border-color:#41557a}
+
+  /* app shell */
+  .shell{display:flex;min-height:calc(100vh - 44px)}
+  .side{width:230px;flex:none;background:var(--surface);border-right:1px solid var(--line);padding:18px 14px}
+  .brand{display:flex;align-items:center;gap:9px;padding:4px 8px 16px}
+  .brand .dot{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--brand),#0ea5e9)}
+  .brand b{font-size:15px}
+  .side .grp{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);padding:14px 8px 6px}
+  .nav a{display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:7px;color:var(--ink-2);font-weight:500;font-size:13.5px;margin-bottom:1px}
+  .nav a:hover{background:var(--surface-2)}
+  .nav a.active{background:var(--brand-soft);color:var(--brand-dark);font-weight:600}
+  .nav a .ic{width:16px;height:16px;flex:none;opacity:.85}
+
+  .main{flex:1;min-width:0;padding:22px 26px 60px}
+  .crumbs{font-size:12.5px;color:var(--ink-3);margin-bottom:4px}
+  .crumbs b{color:var(--ink-2);font-weight:600}
+  .head{display:flex;align-items:flex-start;gap:14px;margin-bottom:6px}
+  .head h1{font-size:21px;margin:0;font-weight:700;letter-spacing:-.01em}
+  .srvmeta{font-size:12.5px;color:var(--ink-3);margin:2px 0 18px}
+  .srvmeta .pill{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:3px 10px;margin-right:7px;color:var(--ink-2)}
+  .statusdot{width:7px;height:7px;border-radius:50%}
+  .run{background:var(--ok)} .stop{background:var(--ink-3)}
+
+  /* whats-new banner */
+  .whatsnew{display:flex;gap:13px;align-items:flex-start;background:linear-gradient(100deg,#eaf2ff,#f3f7ff);
+    border:1px solid #cfe0ff;border-radius:var(--radius);padding:13px 15px;margin-bottom:18px}
+  .whatsnew .nx{width:30px;height:30px;border-radius:8px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700;flex:none}
+  .whatsnew h4{margin:0 0 2px;font-size:14px}
+  .whatsnew p{margin:0;color:var(--ink-2);font-size:13px}
+  .whatsnew .x{margin-left:auto;background:transparent;border:0;color:var(--ink-3);font-size:18px;line-height:1;padding:2px 6px;border-radius:6px}
+  .whatsnew .x:hover{background:#dbe7ff}
+
+  /* tab section nav inside panel */
+  .ptabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px}
+  .ptabs button{background:transparent;border:0;padding:9px 14px;font-size:13.5px;font-weight:500;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .ptabs button.on{color:var(--brand-dark);border-bottom-color:var(--brand);font-weight:600}
+
+  /* overview cards */
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .card .bar{position:absolute;top:0;left:0;height:3px;width:100%}
+  .card .lbl{font-size:11.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+  .card .big{font-size:27px;font-weight:600;margin:9px 0 2px;letter-spacing:-.02em}
+  .card .sub{font-size:12px;color:var(--ink-2)}
+  .meter{height:6px;border-radius:4px;background:#eef2f8;margin-top:11px;overflow:hidden}
+  .meter i{display:block;height:100%;border-radius:4px}
+  .c-ok{color:var(--ok)} .bg-ok{background:var(--ok)}
+  .c-warn{color:var(--warn)} .bg-warn{background:var(--warn)}
+  .c-crit{color:var(--crit)} .bg-crit{background:var(--crit)}
+
+  /* charts */
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .charthead{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .charthead h3{margin:0;font-size:15px;font-weight:600}
+  .charthead .note{font-size:12px;color:var(--ink-3)}
+  .ranges{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:3px;margin-left:auto}
+  .ranges button{background:transparent;border:0;padding:5px 12px;border-radius:6px;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+  .ranges button.on{background:var(--brand);color:#fff}
+  .chartwrap{padding:8px 14px 4px;position:relative}
+  .chart-row{padding:14px 16px 6px;border-top:1px solid var(--line)}
+  .chart-row:first-child{border-top:0}
+  .chart-row .rh{display:flex;align-items:center;gap:10px;margin-bottom:2px}
+  .chart-row .rh .name{font-size:13px;font-weight:600}
+  .chart-row .rh .leg{margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:var(--ink-2)}
+  .chart-row .rh .leg span{display:inline-flex;align-items:center;gap:5px}
+  .chart-row .rh .leg i{width:10px;height:3px;border-radius:2px;display:inline-block}
+  .cbox{height:115px;position:relative}
+  .overlay{position:absolute;inset:0;display:none;place-items:center;background:rgba(247,249,252,.78);border-radius:8px;z-index:5}
+  .overlay.show{display:grid}
+  .overlay .msg{text-align:center;color:var(--ink-2);font-size:13px}
+  .overlay .msg b{display:block;color:var(--ink);font-size:14px;margin-bottom:3px}
+  .spin{width:22px;height:22px;border:2.5px solid #c9d6ea;border-top-color:var(--brand);border-radius:50%;margin:0 auto 10px;animation:sp 0.8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* alerts */
+  .sec-title{font-size:16px;font-weight:700;margin:28px 0 12px;letter-spacing:-.01em}
+  .notif{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:14px}
+  .notif b{color:var(--ink)}
+  table.rules{width:100%;border-collapse:collapse;background:var(--surface)}
+  table.rules th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);padding:11px 16px;border-bottom:1px solid var(--line);font-weight:600}
+  table.rules td{padding:13px 16px;border-bottom:1px solid var(--line);font-size:13.5px}
+  table.rules tr:last-child td{border-bottom:0}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px}
+  .b-ok{background:var(--ok-soft);color:var(--ok)}
+  .b-fire{background:var(--crit-soft);color:var(--crit)}
+  .b-pend{background:var(--warn-soft);color:var(--warn)}
+  .b-na{background:#eef2f8;color:var(--ink-3)}
+  .blink{animation:bl 1.2s ease-in-out infinite}
+  @keyframes bl{50%{opacity:.45}}
+  /* toggle */
+  .tg{position:relative;display:inline-block;width:38px;height:21px}
+  .tg input{display:none}
+  .tg span{position:absolute;inset:0;background:#cdd6e3;border-radius:20px;transition:.18s}
+  .tg span:before{content:"";position:absolute;width:16px;height:16px;left:2.5px;top:2.5px;background:#fff;border-radius:50%;transition:.18s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .tg input:checked+span{background:var(--brand)}
+  .tg input:checked+span:before{transform:translateX(17px)}
+
+  table.hist{width:100%;border-collapse:collapse;background:var(--surface)}
+  table.hist th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);padding:11px 16px;border-bottom:1px solid var(--line);font-weight:600}
+  table.hist td{padding:12px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+  table.hist tr:last-child td{border-bottom:0}
+  .hist-metric{color:var(--ink);font-weight:600}
+  .empty{padding:34px;text-align:center;color:var(--ink-3);font-size:13.5px}
+
+  /* modal / email preview */
+  .scrim{position:fixed;inset:0;background:rgba(14,27,46,.5);display:none;place-items:center;z-index:100;padding:24px}
+  .scrim.show{display:grid}
+  .modal{background:#f1f4f8;border-radius:14px;max-width:620px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.4)}
+  .modal-top{display:flex;align-items:center;gap:10px;padding:13px 18px;background:var(--ink);color:#cdd9ec;position:sticky;top:0}
+  .modal-top b{color:#fff;font-size:13px}
+  .modal-top .from{font-size:11.5px;color:#8aa0c4;margin-left:auto}
+  .modal-top .x{background:transparent;border:0;color:#9fb1cd;font-size:20px;line-height:1;padding:0 4px}
+  .mailmeta{padding:14px 22px 4px;font-size:12.5px;color:var(--ink-2)}
+  .mailmeta .subj{font-size:15px;font-weight:600;color:var(--ink);margin-top:4px}
+  /* the email itself */
+  .email{margin:14px 18px 22px;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #dde4ee;font-family:Inter,Arial,sans-serif}
+  .email .ban{padding:16px 22px;color:#fff;display:flex;align-items:center;gap:11px}
+  .email .ban .ico{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:16px}
+  .email .ban.fire{background:linear-gradient(100deg,#dc2626,#ef5350)}
+  .email .ban.res{background:linear-gradient(100deg,#16a34a,#22c55e)}
+  .email .ban b{font-size:16px;display:block}
+  .email .ban small{opacity:.9;font-size:12px}
+  .email .body{padding:20px 22px}
+  .email h5{margin:0 0 8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .kv{width:100%;border-collapse:collapse;margin-bottom:18px}
+  .kv td{padding:6px 0;font-size:13.5px;border-bottom:1px solid #eef2f7}
+  .kv td:first-child{color:var(--ink-3);width:42%}
+  .kv td:last-child{text-align:right;font-weight:600}
+  .cta{display:block;text-align:center;background:var(--brand);color:#fff;padding:12px;border-radius:8px;font-weight:600;font-size:14px;margin:6px 0 18px}
+  .tips{background:#f7f9fc;border:1px solid #e7edf5;border-radius:8px;padding:13px 15px;margin-bottom:16px}
+  .tips ul{margin:6px 0 0;padding-left:18px;color:var(--ink-2);font-size:13px}
+  .tips li{margin:3px 0}
+  .mailfoot{font-size:11.5px;color:var(--ink-3);text-align:center;border-top:1px solid #eef2f7;padding:14px 22px}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;
+    padding:11px 18px;border-radius:9px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:.25s;z-index:120}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media(max-width:900px){
+    .side{display:none}
+    .cards{grid-template-columns:repeat(2,1fr)}
+    .main{padding:18px 16px 50px}
+  }
+</style>
+</head>
+<body>
+
+<!-- PROTOTYPE CONTROL BAR (not part of product UI) -->
+<div class="proto-bar">
+  <span class="tag">Prototype</span>
+  <strong>VPS Monitoring</strong>
+  <span style="color:#5d6f8e">·</span>
+  <span style="color:#9fb1cd">Scenario:</span>
+  <div class="seg" id="scenarioSeg">
+    <button data-scn="healthy" class="on">Healthy</button>
+    <button data-scn="firing">Alert firing</button>
+    <button data-scn="new">New VPS</button>
+    <button data-scn="stopped">VPS stopped</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="linkbtn" onclick="openMail('fire')">View FIRING email</button>
+  <button class="linkbtn" onclick="openMail('res')">View RESOLVED email</button>
+</div>
+
+<div class="shell">
+  <!-- VPS PANEL SIDEBAR -->
+  <aside class="side">
+    <div class="brand"><span class="dot"></span><b>Bluehost</b></div>
+    <div class="grp">my-vps-01</div>
+    <nav class="nav">
+      <a href="#"><span class="ic">▢</span>Overview</a>
+      <a href="#" class="active"><span class="ic">📈</span>Monitoring</a>
+      <a href="#"><span class="ic">⚙</span>Settings</a>
+      <a href="#"><span class="ic">💾</span>Backups &amp; Snapshots</a>
+      <a href="#"><span class="ic">🌐</span>Networking</a>
+      <a href="#"><span class="ic">🔑</span>Access</a>
+    </nav>
+    <div class="grp">Account</div>
+    <nav class="nav">
+      <a href="#"><span class="ic">🧾</span>Billing</a>
+      <a href="#"><span class="ic">👤</span>Account settings</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="crumbs">VPS / <b>my-vps-01</b> / Monitoring</div>
+    <div class="head">
+      <h1>Monitoring</h1>
+    </div>
+    <div class="srvmeta">
+      <span class="pill"><span class="statusdot run" id="srvDot"></span><span id="srvState">Running</span></span>
+      <span class="pill mono">198.51.100.24</span>
+      <span class="pill">VPS KVM-4 · 4 vCPU · 16 GB RAM · 200 GB NVMe</span>
+    </div>
+
+    <!-- WHAT'S NEW (existing-customer rollout flow) -->
+    <div class="whatsnew" id="whatsnew">
+      <div class="nx">★</div>
+      <div>
+        <h4>New: resource monitoring is now on for this server</h4>
+        <p>See live CPU, memory, disk, network and I/O — no setup needed. Email alerts for critical thresholds are already on.</p>
+      </div>
+      <button class="x" onclick="document.getElementById('whatsnew').remove()" aria-label="Dismiss">×</button>
+    </div>
+
+    <!-- in-panel section tabs -->
+    <div class="ptabs">
+      <button class="on" data-view="dash" onclick="setView('dash',this)">Dashboard</button>
+      <button data-view="alerts" onclick="setView('alerts',this)">Alerts</button>
+      <button data-view="history" onclick="setView('history',this)">Alert history</button>
+    </div>
+
+    <!-- ============ DASHBOARD VIEW ============ -->
+    <section id="view-dash">
+      <!-- overview cards -->
+      <div class="cards" id="cards"></div>
+
+      <!-- charts -->
+      <div class="panel">
+        <div class="charthead">
+          <h3>Resource usage</h3>
+          <span class="note" id="rangeNote">Last 24 hours · 15-min resolution</span>
+          <div class="ranges" id="ranges">
+            <button data-r="1h">1h</button>
+            <button data-r="6h">6h</button>
+            <button data-r="24h" class="on">24h</button>
+            <button data-r="7d">7d</button>
+            <button data-r="30d">30d</button>
+          </div>
+        </div>
+
+        <div class="chart-row">
+          <div class="rh"><span class="name">CPU utilization</span><span class="mono" id="rdg-cpu" style="margin-left:auto;color:var(--ink-2)"></span></div>
+          <div class="cbox"><canvas id="ch-cpu"></canvas><div class="overlay" id="ov-cpu"></div></div>
+        </div>
+        <div class="chart-row">
+          <div class="rh"><span class="name">Memory utilization</span><span class="mono" id="rdg-mem" style="margin-left:auto;color:var(--ink-2)"></span></div>
+          <div class="cbox"><canvas id="ch-mem"></canvas><div class="overlay" id="ov-mem"></div></div>
+        </div>
+        <div class="chart-row">
+          <div class="rh"><span class="name">Disk usage</span><span class="mono" id="rdg-disk" style="margin-left:auto;color:var(--ink-2)"></span></div>
+          <div class="cbox"><canvas id="ch-disk"></canvas><div class="overlay" id="ov-disk"></div></div>
+        </div>
+        <div class="chart-row">
+          <div class="rh"><span class="name">Network bandwidth</span>
+            <span class="leg"><span><i style="background:var(--net-in)"></i>Inbound</span><span><i style="background:var(--net-out)"></i>Outbound</span></span>
+          </div>
+          <div class="cbox"><canvas id="ch-net"></canvas><div class="overlay" id="ov-net"></div></div>
+        </div>
+        <div class="chart-row">
+          <div class="rh"><span class="name">Disk I/O</span>
+            <span class="leg"><span><i style="background:var(--io-read)"></i>Read</span><span><i style="background:var(--io-write)"></i>Write</span></span>
+          </div>
+          <div class="cbox"><canvas id="ch-io"></canvas><div class="overlay" id="ov-io"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ALERTS VIEW ============ -->
+    <section id="view-alerts" style="display:none">
+      <div class="notif">🔔 Alert notifications sent to <b>owner@example.com</b> · <a href="#" onclick="toast('Would open Account settings');return false">Change in Account settings</a></div>
+      <div class="panel">
+        <table class="rules">
+          <thead><tr><th>Alert</th><th>Metric</th><th>Condition</th><th>Status</th><th style="text-align:right">Enabled</th></tr></thead>
+          <tbody id="rulesBody"></tbody>
+        </table>
+      </div>
+      <p style="font-size:12.5px;color:var(--ink-3);margin-top:11px">Custom thresholds and additional alert rules aren't available yet — these three defaults ship on every server. You can switch any of them off above.</p>
+    </section>
+
+    <!-- ============ HISTORY VIEW ============ -->
+    <section id="view-history" style="display:none">
+      <div class="panel">
+        <table class="hist">
+          <thead><tr><th>Metric</th><th>Triggered</th><th>Resolved</th><th>Duration</th><th>Peak</th></tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+        <div class="empty" id="histEmpty" style="display:none">No alerts triggered in the last 30 days.</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- EMAIL PREVIEW MODAL -->
+<div class="scrim" id="scrim" onclick="if(event.target===this)closeMail()">
+  <div class="modal" id="mailModal"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------- state ---------------- */
+let scenario = 'healthy';
+let range = '24h';
+const charts = {};
+let crosshairFrac = null;
+
+const RANGE_META = {
+  '1h':{points:60,note:'Last hour · 1-min resolution',fmt:i=>min(i,1)},
+  '6h':{points:72,note:'Last 6 hours · 5-min resolution',fmt:i=>min(i,5)},
+  '24h':{points:96,note:'Last 24 hours · 15-min resolution',fmt:i=>min(i,15)},
+  '7d':{points:84,note:'Last 7 days · 2-hour resolution',fmt:i=>day(i,2)},
+  '30d':{points:120,note:'Last 30 days · 6-hour resolution',fmt:i=>day(i,6)},
+};
+function min(i,step){const t=new Date(Date.now()-(RANGE_META[range].points-1-i)*step*60000);return t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});}
+function day(i,stepH){const t=new Date(Date.now()-(RANGE_META[range].points-1-i)*stepH*3600000);return t.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit'});}
+
+/* deterministic-ish noisy series */
+function series(n,base,amp,drift,spikeEnd){
+  const out=[];let v=base;
+  for(let i=0;i<n;i++){
+    const wave=Math.sin(i/6)*amp*0.5 + Math.sin(i/2.3)*amp*0.25;
+    let noise=(Math.sin(i*12.9898)*43758.5453);noise=(noise-Math.floor(noise)-0.5)*amp*0.7;
+    v=base+drift*(i/n)+wave+noise;
+    if(spikeEnd && i> n*0.78){ v += (i-n*0.78)/(n*0.22)*spikeEnd; }
+    out.push(Math.max(0,v));
+  }
+  return out;
+}
+function clampPct(a){return a.map(v=>Math.min(99.5,Math.max(0.5,v)))}
+
+/* build datasets per scenario */
+function buildData(){
+  const n=RANGE_META[range].points;
+  const labels=Array.from({length:n},(_,i)=>RANGE_META[range].fmt(i));
+  const fire = scenario==='firing';
+  const cpu = clampPct(series(n,fire?42:30,14,fire?6:2, fire?60:0));
+  const mem = clampPct(series(n,fire?72:58,7,4,0));
+  const disk= clampPct(series(n, scenario==='firing'?92:46, 1.2, scenario==='firing'?5:3, 0));
+  const netIn = series(n,fire?180:55,40,0, fire?260:0).map(v=>Math.max(2,v));
+  const netOut= series(n,fire?90:30,22,0, fire?120:0).map(v=>Math.max(1,v));
+  const ioR = series(n,fire?70:22,18,0, fire?90:0).map(v=>Math.max(1,v));
+  const ioW = series(n,fire?40:14,12,0, fire?60:0).map(v=>Math.max(1,v));
+  return {labels,cpu,mem,disk,netIn,netOut,ioR,ioW};
+}
+
+/* ---------------- charts ---------------- */
+const crosshairPlugin={
+  id:'crosshair',
+  afterDraw(chart){
+    if(crosshairFrac==null)return;
+    const a=chart.chartArea;if(!a)return;
+    const x=a.left+crosshairFrac*(a.right-a.left);
+    const ctx=chart.ctx;ctx.save();
+    ctx.beginPath();ctx.moveTo(x,a.top);ctx.lineTo(x,a.bottom);
+    ctx.lineWidth=1;ctx.strokeStyle='rgba(37,99,235,.5)';ctx.setLineDash([3,3]);ctx.stroke();
+    ctx.restore();
+  }
+};
+Chart.register(crosshairPlugin);
+
+function baseOpts(unit,maxPct){
+  return {
+    responsive:true,maintainAspectRatio:false,animation:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},
+      tooltip:{enabled:true,backgroundColor:'#0e1b2e',padding:9,titleFont:{size:11},bodyFont:{family:"'IBM Plex Mono'",size:12},
+        callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y.toFixed(1)}${unit}`}}},
+    scales:{
+      x:{grid:{display:false},ticks:{maxTicksLimit:6,color:'#9aa7bb',font:{size:10}}},
+      y:{beginAtZero:true,suggestedMax:maxPct,grid:{color:'#eef2f8'},ticks:{color:'#9aa7bb',font:{size:10},maxTicksLimit:4}}
+    }
+  };
+}
+function mkLine(color,fill){return{borderColor:color,backgroundColor:fill||'transparent',borderWidth:1.8,pointRadius:0,pointHoverRadius:3,tension:.32,fill:!!fill}}
+
+function makeChart(id,cfg){const el=document.getElementById(id);const c=new Chart(el,cfg);
+  el.addEventListener('mousemove',e=>{const a=c.chartArea;if(!a)return;
+    const f=(e.offsetX-a.left)/(a.right-a.left);crosshairFrac=(f>=0&&f<=1)?f:null;redrawAll();});
+  el.addEventListener('mouseleave',()=>{crosshairFrac=null;redrawAll();});
+  return c;
+}
+function redrawAll(){Object.values(charts).forEach(c=>c.draw())}
+
+function renderCharts(){
+  const d=buildData();
+  const grad=(id,hex)=>{const ctx=document.getElementById(id).getContext('2d');const g=ctx.createLinearGradient(0,0,0,115);g.addColorStop(0,hex+'33');g.addColorStop(1,hex+'00');return g;}
+  const defs=[
+    ['ch-cpu',[{label:'CPU',data:d.cpu,...mkLine('#2563eb',grad('ch-cpu','#2563eb'))}],'%',100],
+    ['ch-mem',[{label:'Memory',data:d.mem,...mkLine('#7c3aed',grad('ch-mem','#7c3aed'))}],'%',100],
+    ['ch-disk',[{label:'Disk',data:d.disk,...mkLine('#0891b2',grad('ch-disk','#0891b2'))}],'%',100],
+    ['ch-net',[{label:'In',data:d.netIn,...mkLine('#2563eb')},{label:'Out',data:d.netOut,...mkLine('#f59e0b')}],' Mbps',null],
+    ['ch-io',[{label:'Read',data:d.ioR,...mkLine('#0891b2')},{label:'Write',data:d.ioW,...mkLine('#db2777')}],' MB/s',null],
+  ];
+  defs.forEach(([id,ds,unit,mx])=>{
+    if(charts[id]){charts[id].data.labels=d.labels;charts[id].data.datasets=ds;charts[id].options=baseOpts(unit,mx);charts[id].update('none');}
+    else charts[id]=makeChart(id,{type:'line',data:{labels:d.labels,datasets:ds},options:baseOpts(unit,mx)});
+  });
+  // current readings
+  const last=a=>a[a.length-1];
+  document.getElementById('rdg-cpu').textContent='now '+last(d.cpu).toFixed(1)+'%';
+  document.getElementById('rdg-mem').textContent='now '+last(d.mem).toFixed(1)+'%';
+  document.getElementById('rdg-disk').textContent='now '+last(d.disk).toFixed(1)+'%';
+  renderCards(last(d.cpu),last(d.mem),last(d.disk));
+  applyOverlays();
+}
+
+/* ---------------- overview cards ---------------- */
+function cls(v,critAt){return v>critAt?'crit':v>=70?'warn':'ok'}
+function renderCards(cpu,mem,disk){
+  const cardData=[
+    {lbl:'CPU usage',pct:cpu,big:cpu.toFixed(0)+'%',sub:'4 vCPU',crit:90},
+    {lbl:'Memory usage',pct:mem,big:mem.toFixed(0)+'%',sub:(mem/100*16).toFixed(1)+' GB / 16 GB',crit:90},
+    {lbl:'Disk usage',pct:disk,big:disk.toFixed(0)+'%',sub:(disk/100*200).toFixed(0)+' GB / 200 GB',crit:95},
+    {lbl:'Bandwidth',pct:30,big:'1.2 TB',sub:'of 4 TB this month',crit:101},
+  ];
+  document.getElementById('cards').innerHTML=cardData.map(c=>{
+    const k=cls(c.pct,c.crit);
+    return `<div class="card">
+      <div class="bar bg-${k}"></div>
+      <div class="lbl">${c.lbl}</div>
+      <div class="big c-${k} mono">${c.big}</div>
+      <div class="sub">${c.sub}</div>
+      <div class="meter"><i class="bg-${k}" style="width:${Math.min(100,c.pct)}%"></i></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------------- overlays for new / stopped ---------------- */
+function applyOverlays(){
+  const ids=['cpu','mem','disk','net','io'];
+  let html='',show=false;
+  if(scenario==='new'){show=true;html=`<div class="msg"><div class="spin"></div><b>Collecting data</b>Metrics will appear within ~10 minutes of provisioning.</div>`;}
+  if(scenario==='stopped'){show=true;html=`<div class="msg"><b>No data — server is stopped</b>Collection resumes automatically on start.</div>`;}
+  ids.forEach(id=>{const ov=document.getElementById('ov-'+id);ov.innerHTML=html;ov.classList.toggle('show',show);});
+  if(scenario==='new'){renderCards(0,0,0);document.querySelectorAll('.card .big').forEach(e=>e.textContent='—');document.querySelectorAll('.card .sub').forEach(e=>{});}
+}
+
+/* ---------------- alert rules ---------------- */
+const ruleState={cpu:true,mem:true,disk:true};
+function ruleStatus(metric){
+  if(scenario==='stopped')return['na','Insufficient data'];
+  if(scenario==='firing'&&metric==='cpu')return['fire','Firing'];
+  if(scenario==='firing'&&metric==='disk')return['fire','Firing'];
+  return['ok','OK'];
+}
+function renderRules(){
+  const rows=[
+    {k:'cpu',name:'High CPU usage',metric:'CPU utilization',cond:'Above 90% for 5 min'},
+    {k:'mem',name:'High memory usage',metric:'Memory utilization',cond:'Above 90% for 5 min'},
+    {k:'disk',name:'Disk nearly full',metric:'Disk usage',cond:'Above 95% for 5 min'},
+  ];
+  document.getElementById('rulesBody').innerHTML=rows.map(r=>{
+    let [st,lbl]=ruleStatus(r.k);
+    if(!ruleState[r.k]){st='na';lbl='Disabled';}
+    const cl={ok:'b-ok',fire:'b-fire',na:'b-na',pend:'b-pend'}[st];
+    const blink=st==='fire'?' blink':'';
+    return `<tr>
+      <td><b>${r.name}</b></td>
+      <td>${r.metric}</td>
+      <td class="mono" style="color:var(--ink-2)">${r.cond}</td>
+      <td><span class="badge ${cl}${blink}">${st==='fire'?'●':st==='ok'?'●':'○'} ${lbl}</span></td>
+      <td style="text-align:right"><label class="tg"><input type="checkbox" ${ruleState[r.k]?'checked':''} onchange="toggleRule('${r.k}',this.checked)"><span></span></label></td>
+    </tr>`;
+  }).join('');
+}
+function toggleRule(k,on){ruleState[k]=on;renderRules();toast(on?'Alert enabled':'Alert disabled — no emails will be sent for this rule');}
+
+/* ---------------- alert history ---------------- */
+function renderHistory(){
+  const events=(scenario==='new')?[]:[
+    {m:'CPU utilization',t:'Jun 18, 14:02',r:'Jun 18, 14:49',d:'47 min',pk:'97.3%'},
+    {m:'Memory utilization',t:'Jun 15, 03:11',r:'Jun 15, 03:26',d:'15 min',pk:'93.1%'},
+    {m:'Disk usage',t:'Jun 09, 22:40',r:'Ongoing',d:'—',pk:'96.0%'},
+  ];
+  if(scenario==='firing')events.unshift({m:'CPU utilization',t:'just now',r:'Ongoing',d:'—',pk:'94.2%'});
+  const body=document.getElementById('histBody');
+  document.getElementById('histEmpty').style.display=events.length?'none':'block';
+  body.innerHTML=events.map(e=>`<tr>
+    <td class="hist-metric">${e.m}</td>
+    <td class="mono">${e.t}</td>
+    <td class="mono">${e.r==='Ongoing'?'<span class="badge b-fire" style="font-size:10.5px">Ongoing</span>':e.r}</td>
+    <td>${e.d}</td><td class="mono">${e.pk}</td>
+  </tr>`).join('');
+}
+
+/* ---------------- email previews ---------------- */
+function openMail(kind){
+  const fire=kind==='fire';
+  const m=document.getElementById('mailModal');
+  m.innerHTML=`
+    <div class="modal-top">
+      <b>${fire?'Inbox':'Inbox'}</b>
+      <span class="from">from alerts@notifications.bluehost.com</span>
+      <button class="x" onclick="closeMail()">×</button>
+    </div>
+    <div class="mailmeta">
+      To: owner@example.com
+      <div class="subj">${fire?'[Alert] my-vps-01: CPU Usage is above 90%':'[Resolved] my-vps-01: CPU Usage is back to normal'}</div>
+    </div>
+    <div class="email">
+      <div class="ban ${fire?'fire':'res'}">
+        <div class="ico">${fire?'!':'✓'}</div>
+        <div><b>${fire?'ALERT · High CPU usage':'RESOLVED · High CPU usage'}</b>
+        <small>${fire?'A resource threshold has been exceeded':'Resource usage is back within normal range'}</small></div>
+      </div>
+      <div class="body">
+        <h5>Server</h5>
+        <table class="kv">
+          <tr><td>Server name</td><td>my-vps-01</td></tr>
+          <tr><td>IP address</td><td class="mono">198.51.100.24</td></tr>
+          <tr><td>Plan</td><td>VPS KVM-4 · 4 vCPU · 16 GB</td></tr>
+        </table>
+        <h5>${fire?'Alert details':'Resolution details'}</h5>
+        <table class="kv">
+          <tr><td>Metric</td><td>CPU utilization</td></tr>
+          <tr><td>Current value</td><td class="${fire?'c-crit':'c-ok'}">${fire?'94.2%':'42.1%'}</td></tr>
+          <tr><td>Threshold</td><td>90%</td></tr>
+          ${fire
+            ? `<tr><td>Duration</td><td>Above threshold for 5 minutes</td></tr>
+               <tr><td>Triggered at</td><td class="mono">14:02 UTC</td></tr>`
+            : `<tr><td>Incident duration</td><td>Active for 47 minutes</td></tr>
+               <tr><td>Peak value</td><td class="mono">97.3% at 14:21</td></tr>
+               <tr><td>Resolved at</td><td class="mono">14:49 UTC</td></tr>`}
+        </table>
+        <a class="cta" href="#" onclick="closeMail();toast('Would open the Monitoring dashboard');return false">View monitoring dashboard</a>
+        ${fire?`<div class="tips"><b style="font-size:13px">Recommended actions</b>
+          <ul><li>Check running processes for unexpected load.</li>
+          <li>Consider upgrading your VPS plan if the load is sustained.</li></ul></div>`:''}
+      </div>
+      <div class="mailfoot">${fire?'To stop receiving this alert, disable it in your Monitoring settings or <a href="#" onclick="return false">click here</a>.':'You\'re receiving this because monitoring alerts are enabled for this server.'}</div>
+    </div>`;
+  document.getElementById('scrim').classList.add('show');
+}
+function closeMail(){document.getElementById('scrim').classList.remove('show');}
+
+/* ---------------- view + scenario switching ---------------- */
+function setView(v,btn){
+  document.querySelectorAll('.ptabs button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  ['dash','alerts','history'].forEach(x=>document.getElementById('view-'+x).style.display=x===v?'':'none');
+}
+function setScenario(s){
+  scenario=s;
+  const stopped=s==='stopped';
+  document.getElementById('srvDot').className='statusdot '+(stopped?'stop':'run');
+  document.getElementById('srvState').textContent=stopped?'Stopped':(s==='new'?'Provisioning':'Running');
+  renderCharts();renderRules();renderHistory();
+}
+document.getElementById('scenarioSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#scenarioSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  setScenario(b.dataset.scn);
+});
+document.getElementById('ranges').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#ranges button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  range=b.dataset.r;document.getElementById('rangeNote').textContent=RANGE_META[range].note;renderCharts();
+});
+
+let toastT;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200);}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMail()});
+
+/* init */
+renderCharts();renderRules();renderHistory();
+</script>
+</body>
+</html>
