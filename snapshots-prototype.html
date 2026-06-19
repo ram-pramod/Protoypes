@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snapshots — Bluehost VPS Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #2962FF;
+    --primary-hover: #1E4FD9;
+    --primary-light: #E8EEFF;
+    --danger: #D32F2F;
+    --danger-hover: #B71C1C;
+    --danger-light: #FDECEA;
+    --success: #2E7D32;
+    --success-light: #E8F5E9;
+    --warning: #E65100;
+    --warning-light: #FFF3E0;
+    --g50: #FAFAFA; --g100: #F5F5F5; --g200: #EEEEEE; --g300: #E0E0E0;
+    --g400: #BDBDBD; --g500: #9E9E9E; --g700: #616161; --g800: #424242; --g900: #212121;
+    --white: #FFFFFF;
+    --radius: 10px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--g50); color: var(--g900); min-height: 100vh; }
+  button { font-family: var(--font); cursor: pointer; }
+
+  /* Header */
+  .header { background: var(--white); border-bottom: 1px solid var(--g200); padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 12px; }
+  .header-logo { width: 28px; height: 28px; border-radius: 6px; background: var(--primary); display: flex; align-items: center; justify-content: center; color: var(--white); font-weight: 700; font-size: 14px; }
+  .header-brand { font-size: 15px; font-weight: 600; }
+  .header-sep { color: var(--g400); margin: 0 4px; }
+  .header-crumb { font-size: 14px; color: var(--g700); }
+  .header-crumb.active { color: var(--primary); font-weight: 500; }
+
+  /* Layout */
+  .main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+  /* Page header */
+  .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+  .page-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 6px; }
+  .page-header p { font-size: 13px; color: var(--g700); line-height: 1.5; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; transition: background 0.15s, opacity 0.15s; }
+  .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .btn-primary { background: var(--primary); color: var(--white); }
+  .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+  .btn-danger { background: var(--danger); color: var(--white); }
+  .btn-danger:hover:not(:disabled) { background: var(--danger-hover); }
+  .btn-outline { background: var(--white); border: 1px solid var(--g300); color: var(--g800); font-weight: 500; }
+  .btn-outline:hover:not(:disabled) { background: var(--g50); }
+  .btn-outline-danger { background: var(--white); border: 1px solid var(--danger-light); color: var(--danger); font-weight: 500; }
+  .btn-outline-danger:hover:not(:disabled) { background: var(--danger-light); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* VPS info bar */
+  .vps-bar { background: var(--white); border-radius: var(--radius); border: 1px solid var(--g200); padding: 14px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; font-size: 13px; flex-wrap: wrap; }
+  .vps-bar svg { color: var(--primary); flex-shrink: 0; }
+  .vps-bar-details { display: flex; gap: 24px; flex: 1; flex-wrap: wrap; }
+  .vps-bar-details strong { color: var(--g900); }
+  .vps-bar-details span { color: var(--g700); }
+  .snap-count { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; background: var(--primary-light); color: var(--primary); white-space: nowrap; }
+
+  /* Empty state */
+  .empty { background: var(--white); border-radius: 12px; border: 1px solid var(--g200); padding: 64px 32px; text-align: center; }
+  .empty svg { margin-bottom: 16px; opacity: 0.7; }
+  .empty h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .empty p { font-size: 13px; color: var(--g700); max-width: 360px; margin: 0 auto 24px; line-height: 1.6; }
+
+  /* Snapshot card */
+  .snap-list { display: flex; flex-direction: column; gap: 12px; }
+  .snap-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--g200); padding: 20px 24px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; transition: border-color 0.2s, background 0.2s; }
+  .snap-card.restoring { border-color: rgba(230, 81, 0, 0.25); background: rgba(255, 243, 224, 0.3); }
+  .snap-info { flex: 1; min-width: 200px; }
+  .snap-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .snap-title-row strong { font-size: 15px; }
+  .snap-meta { display: flex; gap: 20px; font-size: 13px; color: var(--g700); flex-wrap: wrap; }
+  .snap-meta span { display: flex; align-items: center; gap: 5px; }
+  .snap-meta svg { width: 14px; height: 14px; }
+  .snap-actions { display: flex; gap: 8px; }
+
+  /* Status pill */
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .pill-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill-ready { background: var(--success-light); color: var(--success); }
+  .pill-ready .pill-dot { background: var(--success); }
+  .pill-creating { background: var(--primary-light); color: var(--primary); }
+  .pill-creating .pill-dot { background: var(--primary); animation: pulse 1.5s infinite; }
+  .pill-restoring { background: var(--warning-light); color: var(--warning); }
+  .pill-restoring .pill-dot { background: var(--warning); animation: pulse 1.5s infinite; }
+
+  /* Footer info */
+  .info-footer { margin-top: 24px; padding: 14px 18px; border-radius: 8px; background: var(--primary-light); font-size: 12px; color: var(--g700); line-height: 1.6; }
+  .info-footer strong { color: var(--g900); }
+
+  /* Modal */
+  .overlay { position: fixed; inset: 0; z-index: 900; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease; padding: 16px; }
+  .modal { background: var(--white); border-radius: 12px; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: scaleIn 0.25s ease; }
+  .modal-body { padding: 24px 28px; }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .modal-head h2 { font-size: 17px; font-weight: 700; }
+  .modal-head-icon { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .modal-head-icon .icon-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .modal-head-icon .icon-circle.danger { background: var(--danger-light); color: var(--danger); }
+  .modal-head-icon .icon-circle.warning { background: var(--warning-light); color: var(--warning); }
+  .modal-foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+  .modal-close { background: none; border: none; cursor: pointer; color: var(--g500); padding: 2px; }
+
+  /* Form */
+  .field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--g800); }
+  .field label .hint { color: var(--g500); font-weight: 400; }
+  .field input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--g300); font-size: 14px; font-family: var(--font); outline: none; transition: border-color 0.15s; }
+  .field input:focus { border-color: var(--primary); }
+  .field input.valid { border-color: var(--success); }
+
+  .context-box { padding: 12px 14px; border-radius: 8px; background: var(--g100); font-size: 13px; color: var(--g700); line-height: 1.5; margin-bottom: 4px; }
+  .warning-box { padding: 14px 16px; border-radius: 8px; background: var(--danger-light); border: 1px solid rgba(211,47,47,0.08); font-size: 13px; line-height: 1.7; color: var(--g900); margin-bottom: 20px; }
+  .warning-box .sub { color: var(--g700); }
+  .mono { font-family: monospace; background: var(--g100); padding: 1px 6px; border-radius: 4px; }
+
+  /* Toast */
+  .toast { position: fixed; top: 24px; right: 24px; z-index: 1000; padding: 12px 16px; border-radius: 8px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); max-width: 400px; animation: slideIn 0.3s ease; font-size: 13px; }
+  .toast svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .toast-success { background: var(--success-light); border: 1px solid rgba(46,125,50,0.12); border-left: 3px solid var(--success); color: var(--g900); }
+  .toast-success svg { color: var(--success); }
+  .toast-warning { background: var(--warning-light); border: 1px solid rgba(230,81,0,0.12); border-left: 3px solid var(--warning); color: var(--g900); }
+  .toast-warning svg { color: var(--warning); }
+  .toast-msg { flex: 1; }
+
+  /* Spinner */
+  .spinner { animation: spin 1s linear infinite; display: inline-flex; }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(0.95) } to { opacity: 1; transform: scale(1) } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(40px) } to { opacity: 1; transform: translateX(0) } }
+  @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  @media (max-width: 600px) {
+    .main { padding: 20px 16px; }
+    .snap-card { padding: 16px; }
+    .snap-actions { width: 100%; }
+    .snap-actions .btn { flex: 1; justify-content: center; }
+    .vps-bar-details { gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo">B</div>
+  <span class="header-brand">Bluehost</span>
+  <span class="header-sep">/</span>
+  <span class="header-crumb">VPS Manager</span>
+  <span class="header-sep">/</span>
+  <span class="header-crumb active">Snapshots</span>
+</div>
+
+<div class="main">
+  <!-- Page header -->
+  <div class="page-header">
+    <div>
+      <h1>Snapshots</h1>
+      <p>Capture your server state before making changes. Up to 2 snapshots per VPS, free with your plan.</p>
+    </div>
+    <button class="btn btn-primary" id="createBtn" onclick="handleCreate()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Create Snapshot
+    </button>
+  </div>
+
+  <!-- VPS info bar -->
+  <div class="vps-bar">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+    <div class="vps-bar-details">
+      <strong>vps-prod-01</strong>
+      <span>Ubuntu 24.04 LTS</span>
+      <span>162.241.xx.xx</span>
+      <span>4 vCPU · 8 GB RAM · 200 GB NVMe</span>
+    </div>
+    <span class="snap-count" id="snapCount">0/2 snapshots</span>
+  </div>
+
+  <!-- Content area -->
+  <div id="content"></div>
+
+  <!-- Footer info -->
+  <div class="info-footer">
+    <strong>How snapshots work:</strong> A snapshot captures your full server state at the block level (crash-consistent, no downtime). Snapshots don't count toward your disk quota and never expire. Restoring overwrites your entire VPS — all data created after the snapshot will be lost.
+  </div>
+</div>
+
+<!-- Modals container -->
+<div id="modals"></div>
+
+<!-- Toast container -->
+<div id="toasts"></div>
+
+<!-- SVG icon templates (hidden) -->
+<div style="display:none">
+  <svg id="icon-clock" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  <svg id="icon-hdd" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>
+</div>
+
+<script>
+// ── State ──
+let snapshots = [];
+let isCreating = false;
+let restoringId = null;
+
+const VPS = { name: 'vps-prod-01', os: 'Ubuntu 24.04 LTS', ip: '162.241.xx.xx', plan: '4 vCPU · 8 GB RAM · 200 GB NVMe' };
+
+// ── Helpers ──
+function fmtDate(d) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+function fmtSize(mb) { return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb + ' MB'; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+// ── Icons (inline SVG strings) ──
+const ICO = {
+  restore: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+  trash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  hdd: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>',
+  check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  alert: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  x: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  camera: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+  loader: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>',
+  emptyBox: '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#BDBDBD" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+};
+
+// ── Toast ──
+function showToast(message, type) {
+  const el = document.getElementById('toasts');
+  const id = uid();
+  const iconSvg = type === 'success' ? ICO.check : ICO.alert;
+  el.innerHTML = `<div class="toast toast-${type}" id="toast-${id}">
+    ${iconSvg}<span class="toast-msg">${message}</span>
+    <button class="modal-close" onclick="this.parentElement.remove()">${ICO.x}</button>
+  </div>`;
+  setTimeout(() => { const t = document.getElementById('toast-' + id); if (t) t.remove(); }, 3500);
+}
+
+// ── Render ──
+function render() {
+  const content = document.getElementById('content');
+  document.getElementById('snapCount').textContent = `${snapshots.length}/2 snapshots`;
+
+  const createBtnEl = document.getElementById('createBtn');
+  if (isCreating || restoringId) {
+    createBtnEl.disabled = true;
+    createBtnEl.innerHTML = `<span class="spinner">${ICO.loader}</span> Creating…`;
+  } else {
+    createBtnEl.disabled = false;
+    createBtnEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Create Snapshot`;
+  }
+
+  if (snapshots.length === 0 && !isCreating) {
+    content.innerHTML = `
+      <div class="empty">
+        ${ICO.emptyBox}
+        <h3>No snapshots yet</h3>
+        <p>Create a snapshot before making risky changes like OS upgrades, config edits, or package installs. You can restore in under 2 minutes.</p>
+        <button class="btn btn-primary" onclick="handleCreate()" style="gap:8px">
+          ${ICO.camera} Create your first snapshot
+        </button>
+      </div>`;
+    return;
+  }
+
+  let html = '<div class="snap-list">';
+  snapshots.forEach(s => {
+    const disabled = s.status !== 'ready' || restoringId;
+    const title = s.label || `Snapshot ${s.id.slice(-4)}`;
+    html += `
+      <div class="snap-card ${s.status === 'restoring' ? 'restoring' : ''}">
+        <div class="snap-info">
+          <div class="snap-title-row">
+            <strong>${title}</strong>
+            <span class="pill pill-${s.status}"><span class="pill-dot"></span>${s.status === 'ready' ? 'Ready' : s.status === 'creating' ? 'Creating…' : 'Restoring…'}</span>
+          </div>
+          <div class="snap-meta">
+            <span>${ICO.clock} ${fmtDate(s.created)}</span>
+            <span>${ICO.hdd} ${fmtSize(s.size)}</span>
+            <span>${s.os}</span>
+          </div>
+        </div>
+        <div class="snap-actions">
+          <button class="btn btn-outline" ${disabled ? 'disabled' : ''} onclick="openRestore('${s.id}')">
+            ${ICO.restore} Restore
+          </button>
+          <button class="btn btn-outline-danger" ${disabled ? 'disabled' : ''} onclick="openDelete('${s.id}')">
+            ${ICO.trash} Delete
+          </button>
+        </div>
+      </div>`;
+  });
+  html += '</div>';
+  content.innerHTML = html;
+}
+
+// ── Create ──
+function handleCreate() {
+  if (isCreating || restoringId) return;
+  if (snapshots.length >= 2) {
+    openLimitModal();
+    return;
+  }
+  openCreateModal();
+}
+
+function openCreateModal() {
+  document.getElementById('modals').innerHTML = `
+    <div class="overlay" onclick="closeModal()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-body">
+          <div class="modal-head">
+            <h2>Create Snapshot</h2>
+            <button class="modal-close" onclick="closeModal()">${ICO.x}</button>
+          </div>
+          <div class="field" style="margin-bottom:20px">
+            <label>Label <span class="hint">(optional)</span></label>
+            <input type="text" id="snapLabel" placeholder='e.g. "Before cPanel upgrade"'>
+          </div>
+          <div class="context-box" style="margin-bottom:4px">
+            Snapshot will capture the current state of <strong>${VPS.name}</strong>. Creation is near-instant with no downtime.
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="doCreate()">Create Snapshot</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  setTimeout(() => { const inp = document.getElementById('snapLabel'); if (inp) inp.focus(); }, 100);
+}
+
+function doCreate() {
+  const label = (document.getElementById('snapLabel')?.value || '').trim();
+  closeModal();
+  isCreating = true;
+  render();
+
+  setTimeout(() => {
+    snapshots.push({
+      id: uid(),
+      label: label || null,
+      created: new Date(),
+      size: Math.floor(Math.random() * 800) + 200,
+      os: VPS.os,
+      status: 'ready',
+    });
+    isCreating = false;
+    render();
+    showToast('Snapshot created successfully', 'success');
+  }, 1800);
+}
+
+// ── Restore ──
+function openRestore(id) {
+  const snap = snapshots.find(s => s.id === id);
+  if (!snap) return;
+  document.getElementById('modals').innerHTML = `
+    <div class="overlay" onclick="closeModal()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-body">
+          <div class="modal-head-icon">
+            <div class="icon-circle danger">${ICO.alert}</div>
+            <h2 style="font-size:17px;font-weight:700">Restore from Snapshot</h2>
+          </div>
+          <div class="warning-box">
+            This will <strong>overwrite all current data</strong> on your VPS. Your server will be restored to the snapshot from <strong>${fmtDate(snap.created)}</strong>. This action cannot be undone.
+            <br><br>
+            <span class="sub">Expected restore time: ~2 minutes. Server will reboot automatically.</span>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>Type <strong class="mono">Restore</strong> to confirm</label>
+            <input type="text" id="restoreConfirm" placeholder="Restore" oninput="checkRestoreInput('${id}')">
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-danger" id="restoreSubmit" disabled onclick="doRestore('${id}')">Restore Server</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  setTimeout(() => { const inp = document.getElementById('restoreConfirm'); if (inp) inp.focus(); }, 100);
+}
+
+function checkRestoreInput(id) {
+  const inp = document.getElementById('restoreConfirm');
+  const btn = document.getElementById('restoreSubmit');
+  if (!inp || !btn) return;
+  const match = inp.value === 'Restore';
+  btn.disabled = !match;
+  inp.className = match ? 'valid' : '';
+}
+
+function doRestore(id) {
+  closeModal();
+  restoringId = id;
+  snapshots = snapshots.map(s => s.id === id ? { ...s, status: 'restoring' } : s);
+  render();
+  showToast('Restore in progress — server will reboot automatically', 'warning');
+
+  setTimeout(() => {
+    snapshots = snapshots.map(s => s.id === id ? { ...s, status: 'ready' } : s);
+    restoringId = null;
+    render();
+    showToast('Server restored successfully and rebooted', 'success');
+  }, 4000);
+}
+
+// ── Delete ──
+function openDelete(id) {
+  const snap = snapshots.find(s => s.id === id);
+  if (!snap) return;
+  const title = snap.label || `Snapshot ${snap.id.slice(-4)}`;
+  document.getElementById('modals').innerHTML = `
+    <div class="overlay" onclick="closeModal()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-body">
+          <div class="modal-head">
+            <h2>Delete Snapshot</h2>
+            <button class="modal-close" onclick="closeModal()">${ICO.x}</button>
+          </div>
+          <p style="font-size:13px;color:var(--g700);line-height:1.6">
+            Are you sure you want to delete <strong>"${title}"</strong>? This snapshot will be permanently removed and cannot be recovered.
+          </p>
+          <div class="modal-foot">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-danger" onclick="doDelete('${id}')">Delete Snapshot</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function doDelete(id) {
+  snapshots = snapshots.filter(s => s.id !== id);
+  closeModal();
+  render();
+  showToast('Snapshot deleted', 'success');
+}
+
+// ── Limit modal ──
+function openLimitModal() {
+  document.getElementById('modals').innerHTML = `
+    <div class="overlay" onclick="closeModal()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-body">
+          <div class="modal-head-icon">
+            <div class="icon-circle warning">${ICO.alert}</div>
+            <h2 style="font-size:17px;font-weight:700">Snapshot limit reached</h2>
+          </div>
+          <p style="font-size:13px;color:var(--g700);line-height:1.6;margin-bottom:24px">
+            You already have 2 snapshots, which is the maximum allowed per VPS. To create a new snapshot, delete an existing one first.
+          </p>
+          <div style="display:flex;justify-content:flex-end">
+            <button class="btn btn-primary" onclick="closeModal()">Got it</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function closeModal() {
+  document.getElementById('modals').innerHTML = '';
+}
+
+// ── Init ──
+render();
+</script>
+</body>
+</html>
