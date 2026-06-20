@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bluehost VPS — Connect Domain Prototype</title>
+<style>
+  :root{
+    --bh-blue:#2563eb;
+    --bh-blue-dark:#1d4ed8;
+    --bh-blue-soft:#eaf1ff;
+    --ink:#1a2332;
+    --ink-2:#3d4859;
+    --muted:#6b7587;
+    --line:#e3e8ef;
+    --line-2:#eef1f5;
+    --bg:#f4f6f9;
+    --card:#ffffff;
+    --green:#16a34a;
+    --green-soft:#e7f6ec;
+    --yellow:#b7791f;
+    --yellow-soft:#fdf3e2;
+    --orange:#c2620a;
+    --orange-soft:#fdeede;
+    --red:#dc2626;
+    --red-soft:#fdeaea;
+    --blue-status:#2563eb;
+    --blue-status-soft:#e7efff;
+    --radius:12px;
+    --radius-sm:8px;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer}
+  a{color:var(--bh-blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---------- Prototype mode switcher ---------- */
+  .proto-bar{position:sticky;top:0;z-index:60;background:#0f172a;color:#fff;display:flex;align-items:center;gap:18px;padding:10px 20px;font-size:13px}
+  .proto-bar strong{font-weight:600;letter-spacing:.2px}
+  .proto-bar .seg{display:flex;background:#1e293b;border-radius:8px;padding:3px;gap:3px;margin-left:auto}
+  .proto-bar .seg button{background:transparent;border:0;color:#cbd5e1;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:500}
+  .proto-bar .seg button.active{background:var(--bh-blue);color:#fff}
+  .proto-note{background:#fff7ed;border-bottom:1px solid #fed7aa;color:#9a3412;font-size:12.5px;padding:8px 20px;text-align:center}
+
+  /* ---------- App shell mimicking Bluehost ---------- */
+  .topbar{background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:20px;padding:14px 26px}
+  .logo{display:flex;align-items:center;gap:10px;font-size:21px;font-weight:600;color:#1f3a8a}
+  .logo .grid{width:26px;height:26px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:2px}
+  .logo .grid span{background:#3b6fe0;border-radius:1px}
+  .searchbar{flex:1;max-width:760px;background:#fff;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;gap:10px;padding:11px 16px;color:var(--muted)}
+  .topbar-icons{display:flex;align-items:center;gap:18px;margin-left:auto;color:var(--ink-2)}
+  .avatar{width:38px;height:38px;border-radius:50%;background:var(--bh-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px}
+
+  .layout{display:flex;min-height:calc(100vh - 67px)}
+  .sidebar{width:230px;background:#fff;border-right:1px solid var(--line);padding:18px 14px;flex-shrink:0}
+  .nav-item{display:flex;align-items:center;gap:13px;padding:11px 14px;border-radius:10px;color:var(--ink-2);font-weight:500;margin-bottom:3px;cursor:pointer}
+  .nav-item .ic{width:20px;height:20px;flex-shrink:0;opacity:.7}
+  .nav-item:hover{background:var(--bg)}
+  .nav-item.active{background:var(--bh-blue-soft);color:var(--bh-blue);font-weight:600}
+  .nav-item .badge{margin-left:auto;background:#fde68a;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px}
+
+  .main{flex:1;padding:28px 40px 80px;max-width:1500px}
+  .crumbs{color:var(--muted);font-size:13px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .crumbs .sep{opacity:.5}
+  .crumbs .cur{color:var(--ink-2)}
+  h1.page{font-size:30px;font-weight:700;margin:0 0 22px}
+
+  .tabs{display:flex;gap:28px;border-bottom:1px solid var(--line);margin-bottom:26px}
+  .tab{padding:0 2px 14px;color:var(--muted);font-weight:500;border-bottom:2px solid transparent;cursor:pointer}
+  .tab.active{color:var(--ink);border-color:var(--bh-blue);font-weight:600}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pad{padding:22px 24px}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:9px;font-weight:600;font-size:14px;padding:11px 18px;border:1px solid transparent;transition:.12s}
+  .btn-primary{background:var(--bh-blue);color:#fff}
+  .btn-primary:hover{background:var(--bh-blue-dark)}
+  .btn-ghost{background:#fff;color:var(--bh-blue);border-color:var(--line)}
+  .btn-ghost:hover{background:var(--bh-blue-soft)}
+  .btn-quiet{background:#fff;color:var(--ink-2);border-color:var(--line)}
+  .btn-quiet:hover{background:var(--bg)}
+  .btn-danger{background:#fff;color:var(--red);border-color:#f3c2c2}
+  .btn-danger:hover{background:var(--red-soft)}
+  .btn-sm{padding:7px 13px;font-size:13px;border-radius:8px}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .btn-block{width:100%}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+
+  .label{font-size:13px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+  .info-i{width:16px;height:16px;border-radius:50%;border:1.4px solid var(--muted);color:var(--muted);font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-style:italic;font-weight:700}
+
+  /* status badges */
+  .badge-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap}
+  .badge-status .dot{width:7px;height:7px;border-radius:50%}
+  .st-pending{background:var(--yellow-soft);color:var(--yellow)} .st-pending .dot{background:var(--yellow)}
+  .st-ssl{background:var(--blue-status-soft);color:var(--blue-status)} .st-ssl .dot{background:var(--blue-status)}
+  .st-connected{background:var(--green-soft);color:var(--green)} .st-connected .dot{background:var(--green)}
+  .st-partial{background:var(--orange-soft);color:var(--orange)} .st-partial .dot{background:var(--orange)}
+  .st-sslfail{background:var(--red-soft);color:var(--red)} .st-sslfail .dot{background:var(--red)}
+  .st-failed{background:var(--red-soft);color:var(--red)} .st-failed .dot{background:var(--red)}
+
+  .tag{display:inline-flex;align-items:center;gap:5px;background:var(--bh-blue-soft);color:var(--bh-blue);font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px}
+
+  /* input */
+  .field label{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:7px}
+  .input{width:100%;border:1px solid var(--line);border-radius:9px;padding:12px 14px;font-size:14px;font-family:inherit;color:var(--ink)}
+  .input:focus{outline:none;border-color:var(--bh-blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .input.err{border-color:var(--red)}
+  .err-msg{color:var(--red);font-size:12.5px;margin-top:6px;display:none}
+  .err-msg.show{display:block}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:flex-start;justify-content:center;z-index:80;padding:40px 16px;overflow-y:auto}
+  .overlay.open{display:flex}
+  .modal{background:#fff;border-radius:16px;width:100%;max-width:620px;box-shadow:0 20px 50px rgba(0,0,0,.25);animation:pop .18s ease}
+  .modal.sm{max-width:480px}
+  @keyframes pop{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .modal-head{display:flex;align-items:flex-start;justify-content:space-between;padding:22px 24px 0}
+  .modal-head h3{margin:0;font-size:18px;font-weight:700}
+  .modal-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+  .x{background:none;border:0;font-size:22px;color:var(--muted);line-height:1;padding:4px}
+  .modal-body{padding:18px 24px}
+  .modal-foot{padding:16px 24px 22px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--line-2);margin-top:6px}
+
+  /* dns table */
+  .dns-table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+  .dns-table th{background:var(--bg);text-align:left;padding:10px 12px;font-weight:600;color:var(--ink-2);font-size:12px}
+  .dns-table td{padding:11px 12px;border-top:1px solid var(--line);vertical-align:middle}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  .copy-wrap{display:inline-flex;align-items:center;gap:8px}
+  .copy-btn{background:var(--bh-blue-soft);color:var(--bh-blue);border:0;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600}
+  .copy-btn:hover{background:#dbe7ff}
+
+  .warn{display:flex;gap:10px;background:var(--yellow-soft);border:1px solid #f5e0b8;border-radius:9px;padding:12px 14px;font-size:12.5px;color:#7c5a13;margin-top:14px}
+  .info-box{display:flex;gap:10px;background:var(--bh-blue-soft);border:1px solid #cfe0ff;border-radius:9px;padding:12px 14px;font-size:12.5px;color:#1e3a8a}
+
+  .registrar-chip{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+  .registrar-logo{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:13px;flex-shrink:0}
+
+  /* verification card */
+  .verify-card{border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;gap:14px;align-items:flex-start;margin-top:16px}
+  .spinner{width:22px;height:22px;border:3px solid var(--bh-blue-soft);border-top-color:var(--bh-blue);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;margin-top:2px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* domain card (V1) */
+  .domain-card{border:1px solid var(--line);border-radius:11px;padding:18px 20px;display:flex;align-items:center;gap:16px}
+  .domain-card .dc-main{flex:1;min-width:0}
+  .domain-card .dc-name{font-weight:600;font-size:15px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .domain-card .dc-sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .domain-actions{display:flex;gap:8px;flex-shrink:0}
+  .lock{display:inline-flex;align-items:center;gap:4px;color:var(--green);font-size:12px;font-weight:600}
+
+  .empty{border:1.5px dashed var(--line);border-radius:12px;padding:34px 24px;text-align:center;color:var(--muted)}
+  .empty .em-ic{width:46px;height:46px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+  .empty h4{margin:0 0 6px;color:var(--ink);font-size:15px}
+
+  /* list table (V2) */
+  .dlist{width:100%;border-collapse:collapse}
+  .dlist th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:0 14px 12px;text-transform:uppercase;letter-spacing:.4px}
+  .dlist td{padding:16px 14px;border-top:1px solid var(--line);vertical-align:middle}
+  .dlist tr:hover td{background:#fafbfc}
+  .dname{font-weight:600;font-size:14px}
+  .dname small{display:block;color:var(--muted);font-weight:400;font-size:12px;margin-top:2px}
+
+  .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:120;display:flex;flex-direction:column;gap:10px}
+  .toast{background:#0f172a;color:#fff;padding:13px 18px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.2);display:flex;align-items:center;gap:10px;animation:pop .18s ease;max-width:360px}
+  .toast.ok{background:#14532d}
+  .toast.bad{background:#7f1d1d}
+
+  .banner{border-radius:10px;padding:13px 16px;font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .banner.ok{background:var(--green-soft);color:var(--green);border:1px solid #bbe6c7}
+  .banner.bad{background:var(--red-soft);color:var(--red);border:1px solid #f3c2c2}
+
+  .config-row{display:flex;align-items:flex-start;gap:14px;padding:18px;border:1px solid var(--line);border-radius:11px}
+  .checkbox{width:20px;height:20px;border:2px solid var(--line);border-radius:5px;flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#fff}
+  .checkbox.checked{background:var(--bh-blue);border-color:var(--bh-blue)}
+  .checkbox.checked::after{content:"✓";color:#fff;font-size:13px;font-weight:700}
+
+  .avail-ok{display:flex;align-items:center;justify-content:space-between;background:var(--green-soft);border:1px solid #bbe6c7;border-radius:9px;padding:12px 14px;color:var(--green);font-weight:600;font-size:13px;margin-top:12px}
+  .avail-bad{background:var(--red-soft);border:1px solid #f3c2c2;border-radius:9px;padding:12px 14px;color:var(--red);font-weight:600;font-size:13px;margin-top:12px}
+
+  .cart{border:1px solid var(--line);border-radius:11px;padding:18px;margin-top:18px}
+  .cart-line{display:flex;justify-content:space-between;padding:9px 0;font-size:13.5px;border-bottom:1px solid var(--line-2)}
+  .cart-line.total{border:0;font-weight:700;font-size:15px;padding-top:14px}
+
+  .hidden{display:none!important}
+  .section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:0 0 14px}
+  .stepper{display:flex;gap:6px;margin-bottom:20px}
+  .step{flex:1;height:4px;border-radius:2px;background:var(--line)}
+  .step.on{background:var(--bh-blue)}
+
+  .muted{color:var(--muted)}
+  .mt0{margin-top:0}.mb0{margin-bottom:0}
+  .flex{display:flex;align-items:center;gap:10px}
+  .between{display:flex;align-items:center;justify-content:space-between;gap:14px}
+  hr.div{border:0;border-top:1px solid var(--line-2);margin:18px 0}
+</style>
+</head>
+<body>
+
+<!-- PROTOTYPE SWITCHER -->
+<div class="proto-bar">
+  <strong>Connect Domain · Prototype</strong>
+  <span style="color:#94a3b8;font-size:12px">Switch between versions and the new-customer checkout flow</span>
+  <div class="seg" id="modeSeg">
+    <button data-mode="v1" class="active">V1 · Single Domain</button>
+    <button data-mode="v2">V2 · Multiple Domains</button>
+    <button data-mode="config">Checkout (New Customer)</button>
+  </div>
+</div>
+<div class="proto-note" id="modeNote">V1 — One domain per VPS. Connection happens through a popup/modal launched from the VPS panel.</div>
+
+<div id="app"></div>
+
+<!-- modal mount points -->
+<div class="overlay" id="overlay"></div>
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+/* =========================================================
+   STATE
+========================================================= */
+const VPS_IP = "129.121.97.240";
+
+let mode = "v1";
+
+// registrar mapping (subset from PRD)
+const REGISTRARS = {
+  "godaddy":   {name:"GoDaddy",   color:"#1bdbdb", url:"https://dcc.godaddy.com/manage/dns"},
+  "namecheap": {name:"Namecheap", color:"#de3723", url:"https://ap.www.namecheap.com/domains/domaincontrolpanel/"},
+  "cloudflare":{name:"Cloudflare",color:"#f6821f", url:"https://dash.cloudflare.com/"},
+  "google":    {name:"Google Domains / Squarespace", color:"#111", url:"https://domains.squarespace.com/"},
+  "name":      {name:"Name.com",  color:"#0a8a3f", url:"https://www.name.com/account/domain/"},
+  "bluehost":  {name:"Bluehost",  color:"#3b6fe0", url:"#", auto:true}
+};
+// simple keyword -> registrar resolver for the prototype
+function detectRegistrar(domain){
+  const d = domain.toLowerCase();
+  if(d.includes("godaddy")) return REGISTRARS.godaddy;
+  if(d.includes("namecheap")) return REGISTRARS.namecheap;
+  if(d.includes("cloud")) return REGISTRARS.cloudflare;
+  if(d.includes("google")) return REGISTRARS.google;
+  if(d.includes("bluehost")||d.includes("bh")) return REGISTRARS.bluehost;
+  if(d.includes("name")) return REGISTRARS.name;
+  return null; // unknown -> generic
+}
+
+// V1 single connected domain (or null)
+let v1Domain = null; // {name, isApex, sub, status, registrar, bluehost}
+
+// V2 list of domains
+let v2Domains = [
+  {id:1, name:"acme-store.com", isApex:true, status:"connected", date:"Jun 12, 2026", bluehost:false},
+  {id:2, name:"blog.acme-store.com", isApex:false, sub:"blog", status:"pending", date:"Jun 19, 2026", bluehost:false},
+  {id:3, name:"getacme.io", isApex:true, status:"sslfail", date:"Jun 18, 2026", bluehost:true},
+];
+let v2id = 4;
+
+const STATUS = {
+  pending:   {label:"Pending DNS",        cls:"st-pending"},
+  partial:   {label:"Partially Connected",cls:"st-partial"},
+  ssl:       {label:"SSL Provisioning",   cls:"st-ssl"},
+  connected: {label:"Connected",          cls:"st-connected"},
+  sslfail:   {label:"SSL Failed",         cls:"st-sslfail"},
+  failed:    {label:"Failed",             cls:"st-failed"},
+};
+
+/* =========================================================
+   HELPERS
+========================================================= */
+const $ = (s,el=document)=>el.querySelector(s);
+const overlay = $("#overlay");
+function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function statusBadge(st){
+  const s = STATUS[st]||STATUS.pending;
+  const lock = st==="connected" ? '<span class="lock">🔒 SSL Active</span>' : '';
+  return `<span class="badge-status ${s.cls}"><span class="dot"></span>${s.label}</span>`;
+}
+
+function toast(msg,type=""){
+  const t=document.createElement("div");
+  t.className="toast "+type;
+  t.innerHTML=msg;
+  $("#toasts").appendChild(t);
+  setTimeout(()=>{t.style.opacity="0";t.style.transition=".3s";setTimeout(()=>t.remove(),300)},3600);
+}
+function copy(txt,btn){
+  navigator.clipboard?.writeText(txt);
+  const old=btn.textContent; btn.textContent="Copied"; setTimeout(()=>btn.textContent=old,1200);
+}
+function validDomain(d){
+  return /^(?!-)([a-z0-9-]{1,63}\.)+[a-z]{2,}$/i.test(d.trim());
+}
+function isApex(d){
+  // apex = exactly two labels (example.com). more labels -> subdomain
+  const parts=d.trim().split(".");
+  return parts.length===2;
+}
+function closeModal(){overlay.classList.remove("open");overlay.innerHTML="";}
+overlay.addEventListener("click",e=>{if(e.target===overlay)closeModal();});
+
+/* =========================================================
+   SHARED: DNS instructions + verification (used by V1 modal & V2 page)
+========================================================= */
+function dnsRecordsHTML(domain){
+  const apex = isApex(domain);
+  let rows;
+  if(apex){
+    rows = `
+      <tr><td>A</td><td class="mono">@</td>
+        <td><span class="copy-wrap"><span class="mono">${VPS_IP}</span><button class="copy-btn" onclick="copy('${VPS_IP}',this)">Copy</button></span></td>
+        <td class="mono">3600</td></tr>
+      <tr><td>CNAME</td><td class="mono">www</td>
+        <td><span class="copy-wrap"><span class="mono">${esc(domain)}</span><button class="copy-btn" onclick="copy('${esc(domain)}',this)">Copy</button></span></td>
+        <td class="mono">3600</td></tr>`;
+  } else {
+    const label = domain.split(".")[0];
+    rows = `
+      <tr><td>A</td><td class="mono">${esc(label)}</td>
+        <td><span class="copy-wrap"><span class="mono">${VPS_IP}</span><button class="copy-btn" onclick="copy('${VPS_IP}',this)">Copy</button></span></td>
+        <td class="mono">3600</td></tr>`;
+  }
+  return `
+    <table class="dns-table">
+      <thead><tr><th>Type</th><th>Name</th><th>Value</th><th>TTL</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="warn">⚠️ <div><strong>Don't remove any existing DNS records</strong> (such as MX records for email). Only add the records shown above — removing existing records may disrupt your email or other services.</div></div>`;
+}
+
+function registrarPanelHTML(domain){
+  const r = detectRegistrar(domain);
+  if(r && r.auto){
+    return `<div class="info-box">🔗 <div>This domain is managed by <strong>Bluehost</strong>. We can connect it automatically — no DNS changes needed.
+      <div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="autoConnect('${esc(domain)}')">Auto-Connect</button></div></div></div>`;
+  }
+  if(r){
+    const initials = r.name.slice(0,2).toUpperCase();
+    return `<div class="registrar-chip">
+        <div class="registrar-logo" style="background:${r.color}">${initials}</div>
+        <div style="flex:1">
+          <div style="font-weight:600">We detected your domain is managed by ${esc(r.name)}</div>
+          <div style="font-size:12.5px;margin-top:3px">
+            <a href="${r.url}" target="_blank">Go to ${esc(r.name)} DNS settings →</a>
+            &nbsp;·&nbsp;
+            <a href="#" onclick="return false">How to connect a ${esc(r.name)} domain (KB)</a>
+          </div>
+        </div>
+      </div>`;
+  }
+  return `<div class="info-box">ℹ️ <div>We couldn't detect your registrar. Add the records below in your domain's DNS management area.</div></div>`;
+}
+
+/* =========================================================
+   RENDER: APP SHELL (Bluehost panel)
+========================================================= */
+function shell(inner){
+  return `
+  <div class="topbar">
+    <div class="logo"><span class="grid">${'<span></span>'.repeat(9)}</span> bluehost</div>
+    <div class="searchbar">🔍 <span>Ask blue e.g. How do I add a new website</span></div>
+    <div class="topbar-icons">📣 &nbsp; ❓ &nbsp; 🔔 <div class="avatar">RP</div></div>
+  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      ${navItem("🏠","Home")}
+      ${navItem("🗂️","AI Agents",false,"NEW")}
+      ${navItem("✉️","Email")}
+      ${navItem("🌐","Domains")}
+      ${navItem("🗄️","Hosting",true)}
+      ${navItem("🛡️","Security")}
+      ${navItem("💳","Billing")}
+      ${navItem("🛍️","Marketplace")}
+    </aside>
+    <main class="main">${inner}</main>
+  </div>`;
+}
+function navItem(ic,label,active,badge){
+  return `<div class="nav-item ${active?'active':''}">
+    <span class="ic">${ic}</span>${label}${badge?`<span class="badge">${badge}</span>`:''}</div>`;
+}
+
+function vpsHeader(){
+  return `
+  <div class="crumbs">Hosting <span class="sep">›</span> <span class="cur">Overview</span></div>
+  <h1 class="page">VPS NVMe 4</h1>
+  <div class="tabs"><div class="tab active">Overview</div><div class="tab">License</div></div>`;
+}
+
+function vpsTopCards(){
+  return `
+  <div class="card pad" style="margin-bottom:18px">
+    <div class="between">
+      <div>
+        <div class="label" style="margin-bottom:10px">Server Image</div>
+        <div class="flex"><span style="font-size:20px">🦞</span> <strong>OpenClaw</strong> <span class="muted">on Ubuntu 24.04</span></div>
+      </div>
+      <div class="flex"><button class="btn btn-quiet">Reimage</button><button class="btn btn-primary">Manage</button></div>
+    </div>
+  </div>
+  <div class="grid2" style="margin-bottom:18px">
+    <div class="card pad"><div class="between"><div><div class="label">Disk Storage</div><div style="margin-top:18px"><strong style="font-size:15px">6.15</strong> <span class="muted">of 50GB used</span></div></div><div style="font-weight:700;color:var(--bh-blue)">12%</div></div></div>
+    <div class="card pad"><div class="label">Server Status</div><div style="margin-top:18px;color:var(--green);font-weight:600">● Online</div></div>
+  </div>
+  <div class="card pad" style="margin-bottom:18px">
+    <div class="grid3">
+      <div><div class="label">Data Center</div><div style="margin-top:14px">USA, Virginia</div></div>
+      <div><div class="label">IP Address</div><div style="margin-top:14px" class="flex"><span class="mono">${VPS_IP}</span> <button class="copy-btn" onclick="copy('${VPS_IP}',this)">Copy</button></div></div>
+      <div><div class="label">Root Password</div><div style="margin-top:14px"><a href="#" onclick="return false">Reset Password</a></div></div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   V1 VIEW  — single domain, modal-driven
+========================================================= */
+function renderV1(){
+  $("#app").innerHTML = shell(`
+    ${vpsHeader()}
+    ${vpsTopCards()}
+    <div class="card pad" id="domainSection">
+      <div class="between" style="margin-bottom:18px">
+        <div>
+          <div class="label" style="font-size:15px;color:var(--ink)">Connect Domain</div>
+          <div class="muted" style="font-size:12.5px;margin-top:3px">Attach a custom domain so your server is reachable at your own URL.</div>
+        </div>
+        <button class="btn btn-primary" id="connectBtn" onclick="openConnectModal()">＋ Connect Domain</button>
+      </div>
+      <div id="v1Body"></div>
+    </div>
+  `);
+  renderV1Body();
+}
+
+function renderV1Body(){
+  const wrap = $("#v1Body");
+  const btn = $("#connectBtn");
+  if(!v1Domain){
+    btn.disabled=false;
+    wrap.innerHTML = `
+      <div class="empty">
+        <div class="em-ic">🌐</div>
+        <h4>No domain connected</h4>
+        <div>Connect a domain to make your server accessible via a custom URL.</div>
+      </div>`;
+    return;
+  }
+  btn.disabled=true;
+  const d=v1Domain;
+  const nameDisplay = d.isApex ? `${esc(d.name)} <span class="muted" style="font-weight:400">(+ www.${esc(d.name)})</span>` : esc(d.name);
+  let banner="";
+  if(d.justConnected) banner=`<div class="banner ok">✅ ${esc(d.name)} is now connected to your VPS.</div>`;
+  if(d.status==="failed") banner=`<div class="banner bad">❌ Domain connection failed for ${esc(d.name)}. DNS records were not detected within 24 hours.</div>`;
+
+  let actions = `<button class="btn btn-quiet btn-sm" onclick="viewRecords('${esc(d.name)}')">View DNS Records</button>`;
+  if(d.status==="sslfail") actions = `<button class="btn btn-ghost btn-sm" onclick="retrySSL()">Retry SSL</button>`+actions;
+  if(d.status==="failed")  actions = `<button class="btn btn-ghost btn-sm" onclick="retryVerify()">Retry Verification</button>`+actions;
+  actions += `<button class="btn btn-danger btn-sm" onclick="openDisconnect('${esc(d.name)}')">Disconnect</button>`;
+
+  wrap.innerHTML = banner + `
+    <div class="domain-card">
+      <div style="font-size:22px">🌐</div>
+      <div class="dc-main">
+        <div class="dc-name">${nameDisplay} ${d.bluehost?'<span class="tag">Bluehost Domain</span>':''}</div>
+        <div class="dc-sub">${statusBadge(d.status)} ${d.status==="connected"?'<span class="lock" style="margin-left:8px">🔒 SSL Active</span>':''}</div>
+      </div>
+      <div class="domain-actions">${actions}</div>
+    </div>`;
+}
+
+/* ---------- Connect modal (multi-step) ---------- */
+function openConnectModal(){
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-head">
+        <div><h3>Connect a domain</h3><p>Point a custom domain to this VPS (${VPS_IP}).</p></div>
+        <button class="x" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="stepper"><div class="step on" id="s1"></div><div class="step" id="s2"></div><div class="step" id="s3"></div></div>
+        <div id="modalStep"></div>
+      </div>
+    </div>`;
+  overlay.classList.add("open");
+  modalStepInput();
+}
+function setStep(n){["s1","s2","s3"].forEach((id,i)=>{const el=$("#"+id);if(el)el.classList.toggle("on",i<n);});}
+
+function modalStepInput(){
+  setStep(1);
+  $("#modalStep").innerHTML = `
+    <div class="field">
+      <label>Enter your domain</label>
+      <input class="input" id="domInput" placeholder="Enter your domain (e.g., mysite.com)">
+      <div class="err-msg" id="domErr">Please enter a valid domain name.</div>
+    </div>
+    <div class="muted" style="font-size:13px;margin-top:12px">Don't have a domain? <a href="#" onclick="purchaseFlow();return false"><strong>Purchase a domain</strong></a></div>
+    <div class="modal-foot" style="margin-top:22px">
+      <button class="btn btn-quiet" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitDomain()">Continue</button>
+    </div>`;
+  setTimeout(()=>$("#domInput")?.focus(),50);
+}
+function submitDomain(){
+  const v = $("#domInput").value.trim().toLowerCase().replace(/^https?:\/\//,"").replace(/\/.*$/,"");
+  if(!validDomain(v)){ $("#domInput").classList.add("err"); $("#domErr").classList.add("show"); return; }
+  modalStepDNS(v);
+}
+function modalStepDNS(domain){
+  setStep(2);
+  $("#modalStep").innerHTML = `
+    ${registrarPanelHTML(domain)}
+    <div class="section-title" style="margin-top:16px">Add these DNS records at your registrar</div>
+    ${dnsRecordsHTML(domain)}
+    <div class="modal-foot" style="margin-top:20px">
+      <button class="btn btn-quiet" onclick="modalStepInput()">Back</button>
+      <button class="btn btn-primary" onclick="modalStepVerify('${esc(domain)}')">I've added the records</button>
+    </div>`;
+}
+function modalStepVerify(domain){
+  setStep(3);
+  $("#modalStep").innerHTML = `
+    <div class="verify-card">
+      <div class="spinner"></div>
+      <div>
+        <div style="font-weight:600">Checking DNS configuration…</div>
+        <div class="muted" style="font-size:12.5px;margin-top:4px">This can take up to 48 hours to propagate, but usually happens within a few minutes. You can close this and we'll keep checking in the background.</div>
+        <div class="muted" style="font-size:12px;margin-top:8px">Polling every 30s · ${esc(domain)} → ${VPS_IP}</div>
+      </div>
+    </div>
+    <div class="modal-foot" style="margin-top:20px">
+      <button class="btn btn-quiet" onclick="stashPending('${esc(domain)}')">Close — keep checking</button>
+      <button class="btn btn-primary" onclick="simulateVerified('${esc(domain)}')">▶ Simulate verified</button>
+    </div>`;
+}
+function stashPending(domain){
+  v1Domain = {name:domain, isApex:isApex(domain), status:"pending", bluehost:false};
+  closeModal(); renderV1Body();
+  toast(`Still checking DNS for ${esc(domain)}…`);
+}
+function simulateVerified(domain){
+  $("#modalStep").innerHTML = `
+    <div class="verify-card" style="border-color:#cfe0ff;background:var(--blue-status-soft)">
+      <div class="spinner"></div>
+      <div><div style="font-weight:600">DNS verified — provisioning SSL (Let's Encrypt)…</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">Issuing a certificate for ${esc(domain)}${isApex(domain)?` + www.${esc(domain)}`:''}.</div></div>
+    </div>`;
+  v1Domain = {name:domain, isApex:isApex(domain), status:"ssl", bluehost:false};
+  setTimeout(()=>{
+    v1Domain.status="connected"; v1Domain.justConnected=true;
+    closeModal(); renderV1Body();
+    toast(`✅ ${esc(domain)} is now connected to your VPS.`,"ok");
+  },1600);
+}
+function autoConnect(domain){
+  closeModal();
+  v1Domain = {name:domain, isApex:isApex(domain), status:"ssl", bluehost:true};
+  renderV1Body();
+  toast(`Auto-connecting ${esc(domain)}…`);
+  setTimeout(()=>{ v1Domain.status="connected"; v1Domain.justConnected=true; renderV1Body(); toast(`✅ ${esc(domain)} connected automatically.`,"ok"); },1400);
+}
+function purchaseFlow(){
+  $("#modalStep").innerHTML = `
+    <div class="field">
+      <label>Search for a domain to buy</label>
+      <input class="input" id="buyInput" placeholder="Find your perfect domain" value="mynewsite.com">
+    </div>
+    <div class="avail-ok"><span>✅ mynewsite.com is available</span><span>$12.99/yr</span></div>
+    <div class="info-box" style="margin-top:14px">🔗 <div>Purchased on Bluehost, this domain will be <strong>auto-attached</strong> to your VPS — no manual DNS steps.</div></div>
+    <div class="modal-foot" style="margin-top:20px">
+      <button class="btn btn-quiet" onclick="modalStepInput()">Back</button>
+      <button class="btn btn-primary" onclick="autoConnect('mynewsite.com')">Buy & connect — $12.99</button>
+    </div>`;
+}
+
+/* ---------- View records / retry / disconnect (V1) ---------- */
+function viewRecords(domain){
+  overlay.innerHTML=`<div class="modal sm"><div class="modal-head"><div><h3>DNS records for ${esc(domain)}</h3></div><button class="x" onclick="closeModal()">×</button></div>
+    <div class="modal-body">${dnsRecordsHTML(domain)}</div>
+    <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Done</button></div></div>`;
+  overlay.classList.add("open");
+}
+function retrySSL(){ v1Domain.status="ssl"; renderV1Body(); toast("Retrying SSL provisioning…"); setTimeout(()=>{v1Domain.status="connected";v1Domain.justConnected=true;renderV1Body();toast("✅ SSL issued. Domain connected.","ok");},1500); }
+function retryVerify(){ v1Domain.status="pending"; v1Domain.justConnected=false; renderV1Body(); toast("Verification restarted — 24-hour window reset."); }
+
+function openDisconnect(domain){
+  const bh = v1Domain && v1Domain.bluehost;
+  overlay.innerHTML=`<div class="modal sm"><div class="modal-head"><div><h3>Disconnect ${esc(domain)}?</h3></div><button class="x" onclick="closeModal()">×</button></div>
+    <div class="modal-body">
+      <p class="mt0">Your website will no longer be reachable via this domain. The SSL certificate and server configuration for this domain will be removed from the VPS.</p>
+      ${bh?`<div class="info-box">ℹ️ <div>This domain stays active in your Bluehost account — only the VPS connection is removed.</div></div>`
+          :`<div class="warn">⚠️ <div>After disconnecting, remember to remove the A record pointing to ${VPS_IP} from your registrar's DNS settings.</div></div>`}
+    </div>
+    <div class="modal-foot"><button class="btn btn-quiet" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="doDisconnectV1()">Disconnect</button></div></div>`;
+  overlay.classList.add("open");
+}
+function doDisconnectV1(){ const n=v1Domain.name; v1Domain=null; closeModal(); renderV1Body(); toast(`${esc(n)} disconnected from this VPS.`); }
+
+/* =========================================================
+   V2 VIEW — dedicated page, multiple domains
+========================================================= */
+function renderV2(){
+  const count = v2Domains.length;
+  $("#app").innerHTML = shell(`
+    <div class="crumbs">Hosting <span class="sep">›</span> VPS NVMe 4 <span class="sep">›</span> <span class="cur">Connect Domain</span></div>
+    <h1 class="page">Connect Domain</h1>
+    <div class="card pad" style="margin-bottom:18px;background:var(--bg)">
+      <div class="between">
+        <div class="flex"><span style="font-size:18px">🖥️</span><div><strong>VPS NVMe 4</strong> <span class="muted">· ${VPS_IP}</span><div class="muted" style="font-size:12px">${count} domain${count!==1?'s':''} connected</div></div></div>
+        <a href="#" onclick="setMode('v1');return false">← Back to VPS overview</a>
+      </div>
+    </div>
+
+    <div class="card pad" style="margin-bottom:18px">
+      <div class="section-title">Connect a new domain</div>
+      <div class="flex" style="align-items:flex-start">
+        <div class="field" style="flex:1">
+          <input class="input" id="v2Input" placeholder="Enter your domain (e.g., mysite.com)">
+          <div class="err-msg" id="v2Err">Please enter a valid domain name.</div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:0" onclick="v2Submit()">Connect</button>
+      </div>
+      <div class="muted" style="font-size:13px;margin-top:10px">Don't have a domain? <a href="#" onclick="v2Purchase();return false"><strong>Purchase a domain</strong></a></div>
+      <div id="v2Inline"></div>
+    </div>
+
+    <div class="card pad">
+      <div class="section-title">Connected domains</div>
+      <div id="v2List"></div>
+    </div>
+  `);
+  renderV2List();
+}
+function renderV2List(){
+  const el=$("#v2List");
+  if(v2Domains.length===0){
+    el.innerHTML=`<div class="empty"><div class="em-ic">🌐</div><h4>No domains connected yet</h4>
+      <div>Connect a domain to make your server accessible via a custom URL.</div></div>`;
+    return;
+  }
+  el.innerHTML = `<table class="dlist">
+    <thead><tr><th>Domain</th><th>Status</th><th>SSL</th><th>Connected</th><th style="text-align:right">Actions</th></tr></thead>
+    <tbody>${v2Domains.map(rowV2).join("")}</tbody></table>`;
+}
+function rowV2(d){
+  const nameDisplay = d.isApex ? `${esc(d.name)}<small>+ www.${esc(d.name)}</small>` : esc(d.name);
+  const ssl = d.status==="connected" ? '<span class="lock">🔒 Active</span>'
+            : d.status==="sslfail" ? '<span style="color:var(--red);font-size:12px;font-weight:600">⚠ Failed</span>'
+            : '<span class="muted" style="font-size:12px">—</span>';
+  let acts = `<button class="btn btn-quiet btn-sm" onclick="viewRecords('${esc(d.name)}')">View DNS</button>`;
+  if(d.status==="sslfail") acts=`<button class="btn btn-ghost btn-sm" onclick="v2Retry(${d.id},'ssl')">Retry SSL</button>`+acts;
+  if(d.status==="failed")  acts=`<button class="btn btn-ghost btn-sm" onclick="v2Retry(${d.id},'verify')">Retry</button>`+acts;
+  acts+=`<button class="btn btn-danger btn-sm" onclick="v2Disconnect(${d.id})">Disconnect</button>`;
+  return `<tr>
+    <td><div class="dname">${nameDisplay} ${d.bluehost?'<span class="tag">Bluehost</span>':''}</div></td>
+    <td>${statusBadge(d.status)}</td>
+    <td>${ssl}</td>
+    <td class="muted" style="font-size:13px">${d.date||"—"}</td>
+    <td style="text-align:right"><div class="domain-actions" style="justify-content:flex-end">${acts}</div></td>
+  </tr>`;
+}
+function v2Submit(){
+  const v=$("#v2Input").value.trim().toLowerCase().replace(/^https?:\/\//,"").replace(/\/.*$/,"");
+  if(!validDomain(v)){ $("#v2Input").classList.add("err"); $("#v2Err").classList.add("show"); return; }
+  $("#v2Input").classList.remove("err"); $("#v2Err").classList.remove("show");
+  $("#v2Inline").innerHTML = `
+    <hr class="div">
+    ${registrarPanelHTML(v)}
+    <div class="section-title" style="margin-top:14px">Add these DNS records, then we'll verify automatically</div>
+    ${dnsRecordsHTML(v)}
+    <div class="flex" style="margin-top:16px"><button class="btn btn-primary btn-sm" onclick="v2AddPending('${esc(v)}')">I've added the records — start verifying</button>
+    <button class="btn btn-quiet btn-sm" onclick="document.getElementById('v2Inline').innerHTML=''">Cancel</button></div>`;
+}
+function v2AddPending(domain){
+  const id=v2id++;
+  v2Domains.push({id,name:domain,isApex:isApex(domain),status:"pending",date:"Jun 20, 2026",bluehost:false});
+  $("#v2Input").value=""; $("#v2Inline").innerHTML="";
+  renderV2List();
+  toast(`Verifying DNS for ${esc(domain)}… (polling independently)`);
+  setTimeout(()=>{ const d=v2Domains.find(x=>x.id===id); if(d){d.status="ssl";renderV2List();} },1500);
+  setTimeout(()=>{ const d=v2Domains.find(x=>x.id===id); if(d){d.status="connected";renderV2List();toast(`✅ ${esc(domain)} is now connected.`,"ok");} },3000);
+}
+function v2Purchase(){
+  $("#v2Inline").innerHTML=`<hr class="div">
+    <div class="field"><label>Search for a domain to buy</label><input class="input" value="mynewsite.com" id="v2buy"></div>
+    <div class="avail-ok"><span>✅ mynewsite.com is available</span><span>$12.99/yr</span></div>
+    <div class="info-box" style="margin-top:14px">🔗 <div>Bluehost domains auto-attach to your VPS — no DNS steps needed.</div></div>
+    <div class="flex" style="margin-top:14px"><button class="btn btn-primary btn-sm" onclick="v2Buy('mynewsite.com')">Buy & connect — $12.99</button>
+    <button class="btn btn-quiet btn-sm" onclick="document.getElementById('v2Inline').innerHTML=''">Cancel</button></div>`;
+}
+function v2Buy(domain){
+  const id=v2id++;
+  v2Domains.push({id,name:domain,isApex:true,status:"ssl",date:"Jun 20, 2026",bluehost:true});
+  $("#v2Inline").innerHTML=""; renderV2List(); toast(`Auto-attaching ${esc(domain)}…`);
+  setTimeout(()=>{const d=v2Domains.find(x=>x.id===id);if(d){d.status="connected";renderV2List();toast(`✅ ${esc(domain)} connected.`,"ok");}},1500);
+}
+function v2Retry(id,kind){
+  const d=v2Domains.find(x=>x.id===id); if(!d)return;
+  d.status = kind==="ssl"?"ssl":"pending"; renderV2List();
+  toast(kind==="ssl"?"Retrying SSL…":"Verification restarted.");
+  setTimeout(()=>{d.status="connected";renderV2List();toast(`✅ ${esc(d.name)} connected.`,"ok");},1500);
+}
+function v2Disconnect(id){
+  const d=v2Domains.find(x=>x.id===id); if(!d)return;
+  overlay.innerHTML=`<div class="modal sm"><div class="modal-head"><div><h3>Disconnect ${esc(d.name)}?</h3></div><button class="x" onclick="closeModal()">×</button></div>
+    <div class="modal-body"><p class="mt0">Only this domain is removed. Other connected domains are unaffected. SSL and server config for ${esc(d.name)} will be removed from the VPS.</p>
+    ${d.bluehost?`<div class="info-box">ℹ️ <div>The domain stays in your Bluehost account — only the VPS connection is removed.</div></div>`:`<div class="warn">⚠️ <div>Remember to remove the A record at your registrar afterward.</div></div>`}</div>
+    <div class="modal-foot"><button class="btn btn-quiet" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-danger" onclick="v2DoDisconnect(${id})">Disconnect</button></div></div>`;
+  overlay.classList.add("open");
+}
+function v2DoDisconnect(id){
+  const d=v2Domains.find(x=>x.id===id);
+  v2Domains=v2Domains.filter(x=>x.id!==id);
+  closeModal(); renderV2List(); toast(`${esc(d.name)} disconnected.`);
+}
+
+/* =========================================================
+   CHECKOUT (New customer — Configurator add-on)
+========================================================= */
+let cfgChecked=false, cfgAvail=null;
+function renderConfig(){
+  $("#app").innerHTML = shell(`
+    <div class="crumbs">Hosting <span class="sep">›</span> <span class="cur">Configure your VPS</span></div>
+    <h1 class="page">Configure VPS NVMe 4</h1>
+    <div class="grid2" style="align-items:start">
+      <div class="card pad">
+        <div class="section-title">Add-ons</div>
+        <div class="config-row">
+          <div class="checkbox" id="cfgBox" onclick="cfgToggle()"></div>
+          <div style="flex:1">
+            <div style="font-weight:600">Add a domain</div>
+            <div class="muted" style="font-size:13px;margin-top:3px">Buy a domain with your VPS and we'll connect it automatically — no DNS setup.</div>
+            <div id="cfgSearch" class="hidden" style="margin-top:14px">
+              <div class="flex" style="align-items:flex-start">
+                <input class="input" id="cfgInput" placeholder="Find a domain (e.g. mysite.com)" style="flex:1" oninput="cfgAvail=null;cfgRender()">
+                <button class="btn btn-primary btn-sm" style="margin-top:0" onclick="cfgCheck()">Check</button>
+              </div>
+              <div id="cfgResult"></div>
+            </div>
+          </div>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:12px">The domain add-on is available across all VPS/VDS plans. Tip: include "taken" in the name to see the unavailable state.</div>
+      </div>
+
+      <div class="card pad">
+        <div class="section-title">Your cart</div>
+        <div class="cart-line"><span>VPS NVMe 4 · monthly</span><span>$29.99</span></div>
+        <div class="cart-line" id="cartDomain" style="display:none"><span id="cartDomainName"></span> <span style="display:flex;gap:10px;align-items:center"><span id="cartDomainPrice"></span><a href="#" onclick="cfgRemove();return false" style="font-size:12px">Remove</a></span></div>
+        <div class="cart-line total"><span>Total due today</span><span id="cartTotal">$29.99</span></div>
+        <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="cfgCheckout()">Complete purchase</button>
+        <div class="info-box" style="margin-top:14px">🔗 <div>Domains bought here are <strong>auto-attached</strong> to your new VPS at provisioning — the A and www records are configured for you.</div></div>
+      </div>
+    </div>
+  `);
+  cfgRender();
+}
+function cfgToggle(){ cfgChecked=!cfgChecked; if(!cfgChecked){cfgAvail=null;} cfgRender(); }
+function cfgCheck(){
+  const v=$("#cfgInput").value.trim().toLowerCase();
+  cfgAvail = validDomain(v) ? (v.includes("taken")?{ok:false,name:v}:{ok:true,name:v,price:"$12.99/yr"}) : {bad:true,name:v};
+  cfgRender();
+}
+function cfgRemove(){ cfgAvail=null; cfgChecked=false; cfgRender(); }
+function cfgRender(){
+  $("#cfgBox")?.classList.toggle("checked",cfgChecked);
+  $("#cfgSearch")?.classList.toggle("hidden",!cfgChecked);
+  const res=$("#cfgResult");
+  if(res){
+    if(!cfgAvail){res.innerHTML="";}
+    else if(cfgAvail.bad){res.innerHTML=`<div class="avail-bad">Please enter a valid domain name.</div>`;}
+    else if(cfgAvail.ok){res.innerHTML=`<div class="avail-ok"><span>✅ ${esc(cfgAvail.name)} is available</span><span>${cfgAvail.price}</span></div>`;}
+    else{res.innerHTML=`<div class="avail-bad">Domain is not available. Try another name.</div>`;}
+  }
+  const inCart = cfgChecked && cfgAvail && cfgAvail.ok;
+  const cd=$("#cartDomain");
+  if(cd){
+    cd.style.display = inCart?"flex":"none";
+    if(inCart){ $("#cartDomainName").textContent=cfgAvail.name+" · 1 yr"; $("#cartDomainPrice").textContent="$12.99"; }
+    $("#cartTotal").textContent = inCart?"$42.98":"$29.99";
+  }
+}
+function cfgCheckout(){
+  if(cfgChecked && cfgAvail && cfgAvail.ok){
+    toast(`✅ VPS purchased. ${esc(cfgAvail.name)} will auto-attach during provisioning.`,"ok");
+  } else { toast("✅ VPS purchased.","ok"); }
+}
+
+/* =========================================================
+   MODE WIRING
+========================================================= */
+const NOTES = {
+  v1:"V1 — One domain per VPS. Connection happens through a popup/modal launched from the VPS panel.",
+  v2:"V2 — Multiple domains per VPS via a dedicated Connect Domain page. The modal is retired; everything happens inline on the page.",
+  config:"New-customer checkout — the 'Add a domain' add-on in the VPS Configurator, with availability check and auto-attach."
+};
+function setMode(m){
+  mode=m;
+  $("#modeNote").textContent = NOTES[m];
+  document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("active",b.dataset.mode===m));
+  closeModal();
+  if(m==="v1")renderV1();
+  else if(m==="v2")renderV2();
+  else renderConfig();
+}
+document.querySelectorAll("#modeSeg button").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+
+// boot
+setMode("v1");
+</script>
+</body>
+</html>

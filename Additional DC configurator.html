@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configure Your Server — Bluehost VPS/VDS</title>
+<style>
+  :root{
+    --bg:#f4f6fa;
+    --card:#ffffff;
+    --ink:#0f1729;
+    --muted:#5b6577;
+    --blue:#2253ff;
+    --blue-dark:#0a1f6b;
+    --blue-deep:#0b1a5c;
+    --green:#16a34a;
+    --green-bg:#e7f7ec;
+    --green-ink:#15803d;
+    --line:#e6eaf1;
+    --line-soft:#eef1f6;
+    --sel:#eef3ff;
+    --sel-border:#2253ff;
+    --radius:16px;
+    --shadow:0 1px 2px rgba(16,23,41,.04), 0 8px 24px rgba(16,23,41,.05);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;}
+
+  /* Header */
+  .topbar{background:#fff;padding:18px 40px;display:flex;align-items:center;justify-content:space-between;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-grid{width:30px;height:30px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:2.5px;}
+  .brand-grid span{background:var(--blue);border-radius:1.5px;}
+  .brand-name{font-size:26px;font-weight:600;color:var(--blue);letter-spacing:-.5px;}
+  .phone{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:600;color:var(--ink);}
+  .phone svg{width:20px;height:20px;}
+
+  /* promo band */
+  .band{
+    background:linear-gradient(90deg,#0a1f6b,#173bb8);
+    color:#fff;display:flex;align-items:center;justify-content:center;gap:48px;
+    padding:14px 20px;font-size:15px;flex-wrap:wrap;
+  }
+  .band .pill{border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:7px 18px;display:flex;align-items:center;gap:8px;}
+  .band b{font-weight:700;}
+  .band .ico{width:16px;height:16px;opacity:.9;}
+
+  /* layout */
+  .wrap{max-width:1500px;margin:0 auto;padding:28px 40px 80px;display:grid;grid-template-columns:1fr 420px;gap:30px;align-items:start;}
+  h1.page{font-size:46px;font-weight:800;letter-spacing:-1px;margin:8px 0 26px;}
+
+  /* template card */
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);}
+  .tmpl{padding:22px 24px;margin-bottom:22px;}
+  .tmpl-head{display:flex;align-items:center;gap:10px;font-size:16px;margin-bottom:16px;}
+  .tmpl-head .clock{width:18px;height:18px;color:var(--blue);}
+  .tmpl-head b{font-weight:700;}
+  .tmpl-head .sub{color:var(--muted);}
+  .tmpl-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .tmpl-opt{background:#f7f8fb;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;font-weight:700;font-size:15px;cursor:pointer;transition:.15s;}
+  .tmpl-opt:hover{background:#eef1f6;}
+  .tmpl-ic{width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+  .tmpl-ic svg{width:24px;height:24px;}
+
+  .startover{display:flex;justify-content:flex-end;align-items:center;gap:7px;color:var(--muted);font-size:16px;margin:4px 2px 14px;cursor:pointer;}
+  .startover svg{width:16px;height:16px;}
+
+  /* step rows */
+  .step{margin-bottom:16px;}
+  .step.collapsed{padding:20px 24px;display:flex;align-items:center;gap:16px;}
+  .step.open{border:2px solid var(--sel-border);padding:0;overflow:hidden;}
+  .stepnum{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--muted);font-size:15px;flex-shrink:0;}
+  .check{width:30px;height:30px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .check svg{width:16px;height:16px;color:#fff;}
+  .step-ic{width:24px;height:24px;color:var(--ink);flex-shrink:0;}
+  .step-title{font-size:23px;font-weight:800;}
+  .optional{background:var(--blue);color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;padding:4px 9px;border-radius:6px;}
+  .chev{margin-left:auto;width:18px;height:18px;color:var(--muted);}
+  .summary-tags{display:flex;gap:10px;margin-left:auto;align-items:center;}
+  .tag{background:var(--green-bg);color:var(--green-ink);font-weight:700;font-size:14px;padding:7px 14px;border-radius:10px;display:flex;align-items:center;gap:6px;}
+  .tag svg{width:14px;height:14px;}
+
+  /* open location step */
+  .loc-head{display:flex;align-items:center;gap:14px;padding:22px 24px 4px;}
+  .loc-head .step-title{font-size:24px;}
+  .loc-head .chev{transform:rotate(180deg);}
+  .loc-body{padding:18px 24px 24px;}
+  .loc-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+  .loc-card{
+    position:relative;background:#fff;border:1.5px solid var(--line);border-radius:14px;
+    padding:22px 12px 18px;text-align:center;cursor:pointer;transition:.15s;min-height:118px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  }
+  .loc-card:hover{border-color:#b9c6e8;box-shadow:0 4px 14px rgba(34,83,255,.08);}
+  .loc-card.sel{border-color:var(--sel-border);background:var(--sel);box-shadow:0 0 0 1px var(--sel-border);}
+  .loc-card .flag{font-size:30px;line-height:1;}
+  .loc-card .cname{font-size:17px;font-weight:600;color:var(--ink);}
+  .loc-card .reg{font-size:12.5px;color:var(--muted);margin-top:-6px;}
+  .fastest{
+    position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+    background:var(--green);color:#fff;font-size:12px;font-weight:700;
+    padding:4px 12px;border-radius:999px;white-space:nowrap;
+  }
+  .new-badge{
+    position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+    background:var(--blue);color:#fff;font-size:11px;font-weight:800;letter-spacing:.4px;
+    padding:4px 11px;border-radius:999px;white-space:nowrap;
+  }
+  .loc-actions{display:flex;justify-content:flex-end;margin-top:20px;}
+  .btn{
+    background:var(--blue);color:#fff;border:none;font-weight:700;font-size:16px;
+    padding:14px 26px;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:.15s;
+  }
+  .btn:hover{background:#1842d8;}
+  .btn svg{width:16px;height:16px;}
+
+  /* right column */
+  .side{display:flex;flex-direction:column;gap:24px;}
+  .side h2{font-size:26px;font-weight:800;margin:0 0 18px;}
+  .side-card{padding:26px 26px 28px;}
+  .seg{display:flex;background:#f1f3f8;border-radius:12px;padding:5px;gap:5px;margin-bottom:22px;}
+  .seg button{flex:1;border:none;background:transparent;border-radius:9px;padding:11px 6px;font-weight:700;font-size:15px;color:var(--muted);cursor:pointer;line-height:1.2;}
+  .seg button small{display:block;font-size:11px;font-weight:600;color:var(--green);margin-top:2px;}
+  .seg button.active{background:var(--blue);color:#fff;}
+  .seg button.active small{color:#cfe0ff;font-weight:600;}
+  .divider{height:1px;background:var(--line-soft);margin:6px 0 18px;}
+  .srow{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px;}
+  .srow .ic{width:22px;height:22px;color:var(--blue);flex-shrink:0;margin-top:2px;}
+  .srow .lbl{font-weight:800;font-size:16px;}
+  .srow .val{font-size:14.5px;color:var(--muted);margin-top:3px;}
+  .srow .val b{color:var(--ink);font-weight:700;}
+  .srow .price{margin-left:auto;font-weight:800;color:var(--blue);font-size:18px;white-space:nowrap;}
+
+  .totals{padding:26px;}
+  .trow{display:flex;justify-content:space-between;align-items:center;font-size:18px;margin-bottom:16px;}
+  .trow.big{font-weight:800;font-size:20px;}
+  .trow.big .amt{font-size:24px;}
+  .checkout{width:100%;justify-content:center;padding:18px;font-size:18px;margin:8px 0 16px;}
+  .guarantee{display:flex;align-items:center;justify-content:center;gap:9px;color:var(--muted);font-size:14.5px;font-weight:600;}
+  .guarantee svg{width:18px;height:18px;color:var(--blue);}
+
+  @media(max-width:1100px){
+    .wrap{grid-template-columns:1fr;}
+    .side{order:2;}
+    .tmpl-grid{grid-template-columns:repeat(2,1fr);}
+    .loc-grid{grid-template-columns:repeat(3,1fr);}
+  }
+  @media(max-width:640px){
+    .topbar,.wrap{padding-left:18px;padding-right:18px;}
+    .band{gap:18px;font-size:13px;}
+    h1.page{font-size:34px;}
+    .loc-grid{grid-template-columns:repeat(2,1fr);}
+    .tmpl-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-grid">
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+      </div>
+      <div class="brand-name">bluehost</div>
+    </div>
+    <div class="phone">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      1-844-303-1730
+    </div>
+  </header>
+
+  <div class="band">
+    <div class="pill">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      30-day money-back (annual plans)
+    </div>
+    <div><b>Save up to 55%</b> on 2-year terms</div>
+    <div class="pill">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg>
+      Free DDoS · Firewall · 24/7 support
+    </div>
+  </div>
+
+  <main class="wrap">
+    <!-- LEFT -->
+    <section>
+      <h1 class="page">Configure Your Server</h1>
+
+      <!-- template -->
+      <div class="panel tmpl">
+        <div class="tmpl-head">
+          <svg class="clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span><b>New to VPS? Start with a template</b><span class="sub">—We'll pre-fill the right plan, OS and add-ons</span></span>
+        </div>
+        <div class="tmpl-grid">
+          <div class="tmpl-opt"><div class="tmpl-ic"><svg viewBox="0 0 24 24" fill="#21759b"><circle cx="12" cy="12" r="11" fill="none" stroke="#21759b" stroke-width="1.5"/><path d="M5 9l3 8 2.5-6L13 17l3-8" stroke="#21759b" stroke-width="1.3" fill="none"/></svg></div>WordPress site</div>
+          <div class="tmpl-opt"><div class="tmpl-ic"><svg viewBox="0 0 24 24" fill="#d97757"><rect x="5" y="7" width="14" height="11" rx="2"/><circle cx="9.5" cy="12" r="1.3" fill="#fff"/><circle cx="14.5" cy="12" r="1.3" fill="#fff"/><path d="M12 4v3M8 18v2M16 18v2" stroke="#d97757" stroke-width="1.6"/></svg></div>AI agent / Claude Code</div>
+          <div class="tmpl-opt"><div class="tmpl-ic"><svg viewBox="0 0 24 24" fill="#3c873a"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/></svg></div>Dev / staging</div>
+          <div class="tmpl-opt"><div class="tmpl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.4 12h9.2l1.8-8H6"/></svg></div>eCommerce store</div>
+        </div>
+      </div>
+
+      <div class="startover">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        Start over
+      </div>
+
+      <!-- LOCATION step (open) -->
+      <div class="panel step open">
+        <div class="loc-head">
+          <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
+          <svg class="step-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          <div class="step-title">Location</div>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 15l6-6 6 6"/></svg>
+        </div>
+        <div class="loc-body">
+          <div class="loc-grid">
+            <div class="loc-card">
+              <div class="fastest">Fastest for you</div>
+              <div class="flag">🇺🇸</div>
+              <div class="cname">USA, Virginia</div>
+            </div>
+            <div class="loc-card">
+              <div class="flag">🇺🇸</div>
+              <div class="cname">USA, Arizona</div>
+            </div>
+            <div class="loc-card">
+              <div class="flag">🇬🇧</div>
+              <div class="cname">London</div>
+            </div>
+            <div class="loc-card">
+              <div class="flag">🇨🇦</div>
+              <div class="cname">Toronto</div>
+            </div>
+            <div class="loc-card sel">
+              <div class="flag">🇳🇱</div>
+              <div class="cname">Amsterdam</div>
+            </div>
+
+            <!-- NEW DATA CENTERS -->
+            <div class="loc-card">
+              <div class="new-badge">NEW</div>
+              <div class="flag">🇮🇳</div>
+              <div class="cname">India</div>
+            </div>
+            <div class="loc-card">
+              <div class="new-badge">NEW</div>
+              <div class="flag">🇩🇪</div>
+              <div class="cname">Germany</div>
+            </div>
+            <div class="loc-card">
+              <div class="new-badge">NEW</div>
+              <div class="flag">🇸🇬</div>
+              <div class="cname">Singapore</div>
+            </div>
+            <div class="loc-card">
+              <div class="new-badge">NEW</div>
+              <div class="flag">🇦🇺</div>
+              <div class="cname">Australia</div>
+            </div>
+          </div>
+          <div class="loc-actions">
+            <button class="btn">Continue
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hardware (collapsed) -->
+      <div class="panel step collapsed">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <svg class="step-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>
+        <div class="step-title">Hardware</div>
+        <div class="summary-tags">
+          <div class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>1 vCPU</div>
+          <div class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>2 GB DDR5</div>
+          <div class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>50 GB NVMe</div>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+
+      <!-- Software (collapsed) -->
+      <div class="panel step collapsed">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <svg class="step-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg>
+        <div class="step-title">Software</div>
+        <div class="summary-tags">
+          <div class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>OpenClaw</div>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+
+      <!-- Support (collapsed) -->
+      <div class="panel step collapsed">
+        <div class="stepnum">4</div>
+        <svg class="step-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg>
+        <div class="step-title">Support &amp; Security</div>
+        <span class="optional">OPTIONAL</span>
+        <div class="summary-tags">
+          <div class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>None</div>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+
+      <!-- Advanced (collapsed) -->
+      <div class="panel step collapsed">
+        <div class="stepnum">5</div>
+        <svg class="step-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 6v0M9 6V4m0 4v0M4 12h16m-9 0v-2m0 6v0M4 18h16m-5 0v-2m0 4v0"/></svg>
+        <div class="step-title">Advanced options</div>
+        <span class="optional">OPTIONAL</span>
+        <div class="summary-tags">
+          <div class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg>0 IPs</div>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <aside class="side">
+      <div class="panel side-card">
+        <h2>Your server</h2>
+        <div class="seg">
+          <button class="active">Monthly</button>
+          <button>1 Year<small>save 47%</small></button>
+          <button>2 Years<small>save 55%</small></button>
+        </div>
+
+        <div class="srow">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>
+          <div>
+            <div class="lbl">Hardware</div>
+            <div class="val"><b>1</b> vCPUs · <b>2</b> GB DDR5 · <b>50</b> GB NVMe</div>
+          </div>
+          <div class="price">+ $4.13/mo</div>
+        </div>
+
+        <div class="srow">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg>
+          <div>
+            <div class="lbl">Software</div>
+            <div class="val">Software <b>OpenClaw</b></div>
+          </div>
+        </div>
+
+        <div class="srow">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg>
+          <div>
+            <div class="lbl">Support &amp; Security</div>
+            <div class="val">None</div>
+          </div>
+        </div>
+
+        <div class="srow">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M9 6V4M4 12h16m-9 0v-2M4 18h16m-5 0v-2"/></svg>
+          <div>
+            <div class="lbl">Advanced</div>
+            <div class="val">Extra IP's <b>0 IPs</b></div>
+            <div class="val">Hostname <b>None</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel totals">
+        <div class="trow"><span>Hardware</span><span>$4.13</span></div>
+        <div class="trow big"><span>Due today</span><span class="amt">$4.13</span></div>
+        <button class="btn checkout">Continue to checkout
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <div class="guarantee">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+          30-day money-back guarantee
+        </div>
+      </div>
+    </aside>
+  </main>
+
+</body>
+</html>
