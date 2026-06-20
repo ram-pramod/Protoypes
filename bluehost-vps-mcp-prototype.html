@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bluehost VPS MCP — Connected to Claude</title>
+<style>
+:root{
+  --ink:#0e1620;--panel:#141f2c;--panel-2:#1b2836;--line:#26384a;--line-soft:#1f2f3e;
+  --fog:#7d93a8;--fog-2:#5d7388;--paper:#e8eef4;
+  --teal:#3fd6c4;--teal-deep:#0f7a72;--amber:#f4b84a;--coral:#ff6b6b;--violet:#9d8cff;--ok:#52d98a;
+  --mono:'SFMono-Regular',ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;overflow:hidden}
+body{height:100%;font-family:var(--sans);background:radial-gradient(1200px 600px at 85% -10%,rgba(63,214,196,.07),transparent 60%),radial-gradient(900px 500px at -5% 110%,rgba(157,140,255,.06),transparent 55%),var(--ink);color:var(--paper);-webkit-font-smoothing:antialiased;overflow:hidden;display:flex;flex-direction:column}
+
+/* TOP BAR */
+.topbar{height:52px;flex-shrink:0;display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid var(--line-soft);background:linear-gradient(180deg,rgba(27,40,54,.6),rgba(20,31,44,.3));backdrop-filter:blur(8px)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;font-size:14px}
+.brand .dot{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--teal),var(--teal-deep));display:grid;place-items:center;color:#04201d;font-weight:800;font-size:13px;box-shadow:0 0 0 1px rgba(63,214,196,.3),0 4px 16px rgba(63,214,196,.25)}
+.conn{display:flex;align-items:center;gap:8px;margin-left:6px;font-size:12px;color:var(--fog)}
+.conn .host{color:var(--paper);font-weight:600}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 0 rgba(63,214,196,.5);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(63,214,196,.45)}70%{box-shadow:0 0 0 7px rgba(63,214,196,0)}100%{box-shadow:0 0 0 0 rgba(63,214,196,0)}}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.token-chip{font-family:var(--mono);font-size:11px;color:var(--fog);background:var(--panel-2);border:1px solid var(--line);padding:5px 10px;border-radius:8px;display:flex;align-items:center;gap:7px}
+.token-chip .scope{color:var(--amber);font-weight:600}
+.rate{font-size:11px;color:var(--fog-2);font-family:var(--mono)}
+
+/* ACTIVE SERVER PILL */
+.active-ctx{display:none;align-items:center;gap:8px;padding:5px 12px 5px 10px;background:rgba(63,214,196,.08);border:1px solid rgba(63,214,196,.25);border-radius:20px;font-size:12px;color:var(--teal);cursor:default}
+.active-ctx.on{display:flex}
+.active-ctx .label{color:var(--fog);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.active-ctx .sname{font-weight:700;color:var(--teal)}
+.active-ctx .clear{color:var(--fog-2);cursor:pointer;margin-left:2px;font-size:14px;line-height:1}
+.active-ctx .clear:hover{color:var(--coral)}
+
+/* LAYOUT */
+.shell{display:grid;grid-template-columns:1.05fr .95fr;flex:1 1 0%;min-height:0;overflow:hidden}
+.chat{display:flex;flex-direction:column;border-right:1px solid var(--line-soft);min-width:0;min-height:0;overflow:hidden}
+.dash{display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(20,31,44,.4),transparent);min-width:0;min-height:0;overflow:hidden}
+
+/* CHAT */
+.chat-head{flex-shrink:0;padding:14px 22px 10px;display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--line-soft)}
+.chat-head h1{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--fog)}
+.chat-head .sub{font-size:11px;color:var(--fog-2)}
+.stream{flex:1 1 0%;min-height:0;overflow-y:auto;overflow-x:hidden;padding:22px 22px 8px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.stream::-webkit-scrollbar{width:9px}
+.stream::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;border:2px solid var(--ink)}
+
+.msg{margin-bottom:20px;max-width:92%;animation:rise .4s cubic-bezier(.2,.7,.3,1)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.msg.user{margin-left:auto}
+.msg .role{font-size:10.5px;text-transform:uppercase;letter-spacing:.13em;color:var(--fog-2);margin-bottom:6px;display:flex;align-items:center;gap:7px}
+.msg.user .role{justify-content:flex-end}
+.role .ic{width:16px;height:16px;border-radius:5px;display:grid;place-items:center;font-size:10px;font-weight:800}
+.role .ic.ai{background:linear-gradient(135deg,var(--teal),var(--teal-deep));color:#04201d}
+.role .ic.you{background:var(--violet);color:#1a1340}
+.bubble{font-size:14px;line-height:1.65;color:var(--paper)}
+.msg.user .bubble{background:rgba(157,140,255,.1);border:1px solid rgba(157,140,255,.22);padding:11px 15px;border-radius:13px 13px 4px 13px;color:#efeaff}
+.bubble code{font-family:var(--mono);font-size:12px;background:var(--panel-2);padding:1px 6px;border-radius:5px;color:var(--teal)}
+.bubble strong{color:#fff;font-weight:600}
+.bubble p{margin:6px 0}
+.bubble p:first-child{margin-top:0}
+
+/* TOOL-CALL CARD */
+.toolcall{margin:12px 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:linear-gradient(180deg,var(--panel-2),var(--panel));box-shadow:0 8px 28px -16px rgba(0,0,0,.7)}
+.tc-head{display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--line-soft);font-family:var(--mono);font-size:12px}
+.tc-head .tag{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);border:1px solid rgba(63,214,196,.35);padding:2px 6px;border-radius:5px;background:rgba(63,214,196,.06)}
+.tc-head .name{color:#fff;font-weight:600}
+.tc-head .stat{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px}
+.stat .led{width:7px;height:7px;border-radius:50%}
+.led.run{background:var(--amber);animation:blink 1s infinite}
+.led.done{background:var(--ok)}
+@keyframes blink{50%{opacity:.3}}
+.tc-body{padding:11px 13px;font-family:var(--mono);font-size:11.5px;line-height:1.7;color:var(--fog)}
+.tc-body .kv .k{color:var(--violet)}.tc-body .kv .v{color:#dce8f2}
+.tc-result{border-top:1px solid var(--line-soft);padding:10px 13px;font-family:var(--mono);font-size:11.5px;color:var(--ok);background:rgba(82,217,138,.04);line-height:1.6;white-space:pre-wrap}
+.tc-result.err{color:var(--coral);background:rgba(255,107,107,.05)}
+.action-id{color:var(--amber)}
+
+/* SERVER PICKER in chat */
+.srv-picker{margin:12px 0;display:flex;flex-direction:column;gap:7px}
+.srv-btn{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);cursor:pointer;transition:.15s;text-align:left}
+.srv-btn:hover{border-color:var(--teal);background:rgba(63,214,196,.04)}
+.srv-btn.picked{border-color:var(--teal);background:rgba(63,214,196,.08);pointer-events:none}
+.srv-btn .sname{font-weight:600;font-size:13px}
+.srv-btn .smeta{font-family:var(--mono);font-size:10.5px;color:var(--fog)}
+.srv-btn .sstate{margin-left:auto;font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:14px;display:flex;align-items:center;gap:6px}
+.sstate .sd{width:6px;height:6px;border-radius:50%}
+.sstate.running{background:rgba(82,217,138,.12);color:var(--ok)}.sstate.running .sd{background:var(--ok)}
+.sstate.stopped{background:rgba(125,147,168,.12);color:var(--fog)}.sstate.stopped .sd{background:var(--fog)}
+
+/* INLINE DATA TABLE in chat */
+.inline-table{margin:10px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:12px}
+.inline-table table{width:100%;border-collapse:collapse}
+.inline-table th{background:var(--panel-2);padding:7px 11px;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--fog-2);border-bottom:1px solid var(--line-soft)}
+.inline-table td{padding:7px 11px;border-bottom:1px solid var(--line-soft);font-family:var(--mono);font-size:11.5px;color:var(--paper)}
+.inline-table tr:last-child td{border:none}
+.inline-table .hl{color:var(--teal)}
+.inline-table .dim{color:var(--fog-2)}
+
+/* DESTRUCTIVE CONFIRM */
+.confirm{margin:12px 0;border:1px solid rgba(255,107,107,.4);border-radius:12px;background:rgba(255,107,107,.06);overflow:hidden}
+.confirm .ch{display:flex;align-items:center;gap:9px;padding:11px 14px;font-weight:600;font-size:13px;color:#ffd9d9;border-bottom:1px solid rgba(255,107,107,.2)}
+.confirm .cb{padding:12px 14px;font-size:12.5px;line-height:1.6;color:#f0c8c8}
+.confirm ul{margin:8px 0 4px 18px;list-style:disc}
+.confirm li{margin:3px 0}
+.confirm .acts{display:flex;gap:9px;padding:0 14px 13px}
+.btn{font-family:var(--sans);font-size:12.5px;font-weight:600;border:none;border-radius:8px;padding:8px 15px;cursor:pointer;transition:.15s}
+.btn.danger{background:var(--coral);color:#360b0b}.btn.danger:hover{background:#ff8585}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fog)}.btn.ghost:hover{border-color:var(--fog-2);color:var(--paper)}
+
+/* TYPING */
+.typing{display:inline-flex;gap:4px;padding:4px 0}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--fog-2);animation:td 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.18s}.typing span:nth-child(3){animation-delay:.36s}
+@keyframes td{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+
+/* COMPOSER */
+.composer{flex-shrink:0;border-top:1px solid var(--line-soft);padding:14px 18px 16px;background:rgba(14,22,32,.6)}
+.suggest{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;max-height:72px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.chip{font-size:11.5px;color:var(--fog);background:var(--panel-2);border:1px solid var(--line);padding:6px 11px;border-radius:18px;cursor:pointer;transition:.15s;white-space:nowrap}
+.chip:hover{border-color:var(--teal);color:var(--teal);background:rgba(63,214,196,.06)}
+.inputrow{display:flex;gap:10px;align-items:flex-end;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:8px 8px 8px 14px;transition:.15s}
+.inputrow:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px rgba(63,214,196,.1)}
+.inputrow textarea{flex:1;background:none;border:none;color:var(--paper);font-family:var(--sans);font-size:14px;resize:none;outline:none;line-height:1.5;max-height:120px;padding:5px 0}
+.inputrow textarea::placeholder{color:var(--fog-2)}
+.send{width:36px;height:36px;border-radius:9px;border:none;cursor:pointer;flex-shrink:0;background:linear-gradient(135deg,var(--teal),var(--teal-deep));color:#04201d;font-size:16px;display:grid;place-items:center;transition:.15s}
+.send:hover{filter:brightness(1.1)}.send:disabled{opacity:.4;cursor:default}
+
+/* DASHBOARD */
+.dash-head{flex-shrink:0;padding:14px 22px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:12px}
+.dash-head h2{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--fog)}
+.dash-head .seg{margin-left:auto;display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:2px}
+.seg button{font-family:var(--sans);font-size:11.5px;color:var(--fog);background:none;border:none;padding:6px 12px;border-radius:7px;cursor:pointer;transition:.15s}
+.seg button.on{background:var(--panel-2);color:var(--paper);box-shadow:0 1px 0 rgba(255,255,255,.04)}
+.dash-body{flex:1 1 0%;min-height:0;overflow-y:auto;overflow-x:hidden;padding:18px 22px 40px;-webkit-overflow-scrolling:touch}
+.dash-body::-webkit-scrollbar{width:9px}
+.dash-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;border:2px solid var(--ink)}
+.view{display:none}.view.on{display:block;animation:rise .35s ease}
+.sectitle{font-size:10.5px;text-transform:uppercase;letter-spacing:.13em;color:var(--fog-2);margin:18px 0 10px;display:flex;align-items:center;gap:8px}
+.sectitle:first-child{margin-top:0}
+.sectitle .ln{flex:1;height:1px;background:var(--line-soft)}
+
+/* SERVER CARDS */
+.server{border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,var(--panel-2),var(--panel));padding:14px;margin-bottom:12px;transition:.25s;position:relative;overflow:hidden}
+.server.active-s{border-color:rgba(63,214,196,.4);box-shadow:0 0 0 1px rgba(63,214,196,.15)}
+.server.flash{animation:flash 1.4s ease}
+@keyframes flash{0%{box-shadow:0 0 0 0 rgba(63,214,196,.5)}100%{box-shadow:0 0 0 0 rgba(63,214,196,0)}}
+.server .top{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.server .shost{font-weight:600;font-size:14px;letter-spacing:-.01em}
+.server .sid{font-family:var(--mono);font-size:10.5px;color:var(--fog-2)}
+.state{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:14px;display:flex;align-items:center;gap:6px;text-transform:capitalize}
+.state .d{width:6px;height:6px;border-radius:50%}
+.state.running{background:rgba(82,217,138,.12);color:var(--ok)}.state.running .d{background:var(--ok)}
+.state.stopped{background:rgba(125,147,168,.12);color:var(--fog)}.state.stopped .d{background:var(--fog)}
+.state.provisioning,.state.restarting,.state.installing,.state.resizing,.state.restoring,.state.starting,.state.stopping{background:rgba(244,184,74,.12);color:var(--amber)}
+.state.provisioning .d,.state.restarting .d,.state.installing .d,.state.resizing .d,.state.restoring .d,.state.starting .d,.state.stopping .d{background:var(--amber);animation:blink 1s infinite}
+.server .stag{font-size:9.5px;color:var(--violet);border:1px solid rgba(157,140,255,.3);padding:2px 6px;border-radius:5px;background:rgba(157,140,255,.07);font-family:var(--mono)}
+.specs{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line-soft);border-radius:9px;overflow:hidden;border:1px solid var(--line-soft)}
+.spec{background:var(--panel);padding:9px 10px}
+.spec .l{font-size:9.5px;color:var(--fog-2);text-transform:uppercase;letter-spacing:.08em}
+.spec .n{font-size:13px;font-weight:600;margin-top:2px;font-family:var(--mono)}
+.server .meta{display:flex;gap:14px;margin-top:10px;font-size:11px;color:var(--fog);font-family:var(--mono);flex-wrap:wrap}
+.server .meta b{color:var(--paper);font-weight:500}
+.gauges{display:flex;gap:14px;margin-top:11px}
+.gauge{flex:1}
+.gauge .gl{display:flex;justify-content:space-between;font-size:10px;color:var(--fog-2);margin-bottom:4px;font-family:var(--mono)}
+.gauge .gl b{color:var(--paper)}
+.bar{height:5px;background:var(--panel-2);border-radius:4px;overflow:hidden;border:1px solid var(--line-soft)}
+.bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--teal-deep),var(--teal));transition:width .6s ease}
+.bar i.hot{background:linear-gradient(90deg,var(--amber),var(--coral))}
+.applist{display:flex;flex-direction:column;gap:7px;margin-top:11px}
+.app{display:flex;align-items:center;gap:11px;border:1px solid var(--line-soft);border-radius:9px;padding:9px 12px;background:var(--panel)}
+.app .ico{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font-size:14px;flex-shrink:0}
+.app .nm{font-size:12.5px;font-weight:600}.app .vr{font-family:var(--mono);font-size:10.5px;color:var(--fog-2)}
+.app .url{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--teal)}
+.app .badge{font-size:9.5px;color:var(--ok);background:rgba(82,217,138,.12);padding:2px 7px;border-radius:11px;margin-left:auto}
+
+/* ACTIONS LOG */
+.actrow{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:12px}
+.actrow:last-child{border:none}
+.actrow .aid{font-family:var(--mono);font-size:10.5px;color:var(--amber);min-width:96px}
+.actrow .atype{color:var(--paper);font-weight:500;flex:1}
+.actrow .ast{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:11px}
+.ast.completed{background:rgba(82,217,138,.12);color:var(--ok)}
+.ast.in_progress{background:rgba(244,184,74,.12);color:var(--amber)}
+.ast.failed{background:rgba(255,107,107,.12);color:var(--coral)}
+.actrow .adur{font-family:var(--mono);font-size:10px;color:var(--fog-2);min-width:42px;text-align:right}
+.empty{color:var(--fog-2);font-size:12.5px;text-align:center;padding:30px 10px;line-height:1.6;font-style:italic}
+
+/* TOOLS GRID */
+.toolgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.tool{border:1px solid var(--line-soft);border-radius:8px;padding:9px 11px;background:var(--panel)}
+.tool .tn{font-family:var(--mono);font-size:11px;color:var(--teal);font-weight:600}
+.tool .td{font-size:10.5px;color:var(--fog);margin-top:3px;line-height:1.4}
+.grpcount{font-size:10px;color:var(--fog-2);font-family:var(--mono)}
+.footnote{flex-shrink:0;font-size:10.5px;color:var(--fog-2);padding:10px 22px;border-top:1px solid var(--line-soft);font-family:var(--mono);text-align:center}
+
+@media(max-width:1080px){body{overflow:auto}.shell{grid-template-columns:1fr;height:auto}.chat{border-right:none;border-bottom:1px solid var(--line-soft);height:85vh;max-height:85vh}.dash{height:auto;min-height:600px}.topbar{flex-wrap:wrap;height:auto;padding:10px 14px;gap:8px}.toolgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand"><span class="dot">B</span> Bluehost VPS</div>
+  <div class="conn"><span class="pulse"></span> MCP connected to <span class="host">Claude Desktop</span><span style="color:var(--fog-2)">· @bluehost/vps-mcp-server v1.0</span></div>
+  <div class="right">
+    <div class="active-ctx" id="actx"><span class="label">Active</span> <span class="sname" id="actx-name"></span><span class="clear" id="actx-clear" title="Clear selection">×</span></div>
+    <div class="token-chip">tok_••••4f2a <span class="scope">full-access</span></div>
+    <div class="rate" id="rate">60 / 60 req·min</div>
+  </div>
+</div>
+
+<div class="shell">
+<section class="chat">
+  <div class="chat-head"><h1>Assistant</h1><span class="sub">natural language → MCP tool calls → live state</span></div>
+  <div class="stream" id="stream"></div>
+  <div class="composer">
+    <div class="suggest" id="suggest"></div>
+    <div class="inputrow"><textarea id="input" rows="1" placeholder="Tell me what to do…"></textarea><button class="send" id="send">↑</button></div>
+  </div>
+</section>
+
+<section class="dash">
+  <div class="dash-head"><h2>Live infrastructure</h2>
+    <div class="seg" id="seg"><button class="on" data-v="fleet">Fleet</button><button data-v="actions">Actions</button><button data-v="tools">Tools</button></div>
+  </div>
+  <div class="dash-body">
+    <div class="view on" id="view-fleet"></div>
+    <div class="view" id="view-actions"><div class="sectitle">Async action log <span class="ln"></span></div><div id="actionlog"><div class="empty">No actions yet. Perform operations through the chat — every async action is tracked here.</div></div></div>
+    <div class="view" id="view-tools"></div>
+  </div>
+  <div class="footnote">Phase 2 · Public REST API + MCP Server · ~150 VPS/VDS management actions</div>
+</section>
+</div>
+
+<script>
+/* =================================================================
+   STATE
+   ================================================================= */
+const fleet = [
+  { id:'vps_a3f91c',host:'prod-web-01',state:'running',plan:'VPS-4',cpu:4,ram:'8 GB',disk:'160 GB',bw:'5 TB',
+    ip:'192.0.2.41',os:'Ubuntu 24.04',dc:'IAD-1',mcp:true,hostname:'prod-web-01.example.com',
+    ns:['8.8.8.8','8.8.4.4'],metrics:{cpu:46,ram:61,disk:38},
+    apps:[{n:'WordPress',v:'6.7',i:'📝',c:'#2b6cb0',url:'prod-web-01.example.com'}],
+    firewalls:[],sshkeys:['key_main'],snapshots:['snap_a01'],docker:[] },
+  { id:'vps_77b204',host:'staging-app',state:'running',plan:'VPS-2',cpu:2,ram:'4 GB',disk:'80 GB',bw:'3 TB',
+    ip:'192.0.2.88',os:'Debian 12',dc:'IAD-1',mcp:true,hostname:'staging-app.example.com',
+    ns:['1.1.1.1','1.0.0.1'],metrics:{cpu:12,ram:33,disk:21},
+    apps:[],firewalls:[],sshkeys:[],snapshots:[],docker:[] },
+  { id:'vps_d12e60',host:'db-replica',state:'stopped',plan:'VDS-8',cpu:8,ram:'32 GB',disk:'400 GB',bw:'8 TB',
+    ip:'192.0.2.15',os:'Rocky 9',dc:'SJC-2',mcp:false,hostname:'db-replica.internal',
+    ns:['8.8.8.8'],metrics:{cpu:0,ram:0,disk:54},
+    apps:[],firewalls:[],sshkeys:['key_ops'],snapshots:[],docker:[] },
+];
+
+const appCatalog = [
+  {slug:'wordpress',n:'WordPress',v:'6.7',i:'📝',c:'#2b6cb0',cat:'CMS',minRam:'512 MB'},
+  {slug:'nodejs',n:'Node.js',v:'22 LTS',i:'⬢',c:'#3c873a',cat:'Runtime',minRam:'256 MB'},
+  {slug:'lamp',n:'LAMP Stack',v:'8.3',i:'🐬',c:'#e07b39',cat:'Dev Stack',minRam:'1 GB'},
+  {slug:'openclaw',n:'OpenClaw',v:'2.1',i:'🦞',c:'#c0392b',cat:'AI Framework',minRam:'2 GB'},
+  {slug:'ghost',n:'Ghost',v:'5.89',i:'👻',c:'#738a94',cat:'CMS',minRam:'1 GB'},
+  {slug:'nextcloud',n:'Nextcloud',v:'29',i:'☁️',c:'#0082c9',cat:'Storage',minRam:'2 GB'},
+  {slug:'gitea',n:'Gitea',v:'1.22',i:'🍵',c:'#609926',cat:'Dev Tools',minRam:'512 MB'},
+  {slug:'redis',n:'Redis',v:'7.4',i:'🔴',c:'#dc382d',cat:'Database',minRam:'256 MB'},
+];
+
+const planCatalog = [
+  {slug:'vps-1',n:'VPS-1',cpu:1,ram:'2 GB',disk:'40 GB',bw:'2 TB',price:'$4.99'},
+  {slug:'vps-2',n:'VPS-2',cpu:2,ram:'4 GB',disk:'80 GB',bw:'3 TB',price:'$7.99'},
+  {slug:'vps-4',n:'VPS-4',cpu:4,ram:'8 GB',disk:'160 GB',bw:'5 TB',price:'$13.99'},
+  {slug:'vps-6',n:'VPS-6',cpu:6,ram:'16 GB',disk:'240 GB',bw:'8 TB',price:'$24.99'},
+  {slug:'vps-8',n:'VPS-8',cpu:8,ram:'32 GB',disk:'400 GB',bw:'10 TB',price:'$39.99'},
+  {slug:'vds-8',n:'VDS-8',cpu:8,ram:'32 GB',disk:'400 GB',bw:'8 TB',price:'$49.99'},
+  {slug:'vds-12',n:'VDS-12',cpu:12,ram:'64 GB',disk:'800 GB',bw:'12 TB',price:'$79.99'},
+];
+
+const osCatalog = [
+  {id:'ubuntu-24',n:'Ubuntu',v:'24.04 LTS',arch:'x86_64',cat:'Linux'},
+  {id:'ubuntu-22',n:'Ubuntu',v:'22.04 LTS',arch:'x86_64',cat:'Linux'},
+  {id:'debian-12',n:'Debian',v:'12 Bookworm',arch:'x86_64',cat:'Linux'},
+  {id:'rocky-9',n:'Rocky Linux',v:'9.4',arch:'x86_64',cat:'Linux'},
+  {id:'alma-9',n:'AlmaLinux',v:'9.4',arch:'x86_64',cat:'Linux'},
+  {id:'centos-s9',n:'CentOS Stream',v:'9',arch:'x86_64',cat:'Linux'},
+  {id:'fedora-40',n:'Fedora',v:'40',arch:'x86_64',cat:'Linux'},
+];
+
+const dcCatalog = [
+  {id:'IAD-1',city:'Ashburn, VA',region:'us-east',status:'active'},
+  {id:'SJC-2',city:'San Jose, CA',region:'us-west',status:'active'},
+  {id:'ORD-1',city:'Chicago, IL',region:'us-central',status:'active'},
+  {id:'AMS-1',city:'Amsterdam, NL',region:'eu-west',status:'active'},
+  {id:'SIN-1',city:'Singapore',region:'ap-southeast',status:'active'},
+];
+
+let actions = [];
+let actionSeq = 4815;
+let activeServer = null; // the selected VPS
+let busy = false;
+
+const stream = document.getElementById('stream');
+const inputEl = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+const actxEl = document.getElementById('actx');
+const actxName = document.getElementById('actx-name');
+
+/* =================================================================
+   HELPERS
+   ================================================================= */
+const wait = ms => new Promise(r=>setTimeout(r,ms));
+function scrollDown(){ stream.scrollTop = stream.scrollHeight; }
+
+function setActive(s){
+  activeServer = s;
+  actxEl.classList.toggle('on',!!s);
+  if(s) actxName.textContent = s.host;
+  renderFleet();
+  updateSuggestions();
+}
+document.getElementById('actx-clear').onclick=()=>{ setActive(null); addAiMsg(`Server context cleared. I'll ask which server you mean when needed.`); };
+
+function byHost(h){ return fleet.find(s=>s.host===h); }
+function byId(id){ return fleet.find(s=>s.id===id); }
+function setState(s,st){ s.state=st; renderFleet(); }
+function flash(s){ s._flash=true; renderFleet(); setTimeout(()=>{s._flash=false;},1500); }
+
+function track(type, sid){
+  const a={id:'act_'+(actionSeq++),type,server:sid,status:'in_progress',start:Date.now()};
+  actions.unshift(a); renderActions(); bumpRate(); return a;
+}
+function finish(a){ a.status='completed'; a.dur=((Date.now()-a.start)/1000).toFixed(1)+'s'; renderActions(); }
+function failAction(a,msg){ a.status='failed'; a.dur=msg||'error'; renderActions(); }
+
+function bumpRate(){
+  const el=document.getElementById('rate');
+  let n=parseInt(el.textContent)-1; if(n<1)n=58;
+  el.textContent=n+' / 60 req·min';
+}
+
+/* =================================================================
+   CHAT PRIMITIVES
+   ================================================================= */
+function addUserMsg(text){
+  const m=document.createElement('div'); m.className='msg user';
+  m.innerHTML=`<div class="role">You <span class="ic you">U</span></div><div class="bubble"></div>`;
+  m.querySelector('.bubble').textContent=text;
+  stream.appendChild(m); scrollDown();
+}
+function addAiMsg(html){
+  const m=document.createElement('div'); m.className='msg ai';
+  m.innerHTML=`<div class="role"><span class="ic ai">C</span> Claude</div><div class="bubble">${html}</div>`;
+  stream.appendChild(m); scrollDown();
+  return m.querySelector('.bubble');
+}
+function aiShell(){
+  const m=document.createElement('div'); m.className='msg ai';
+  m.innerHTML=`<div class="role"><span class="ic ai">C</span> Claude</div><div class="bubble"></div>`;
+  stream.appendChild(m); scrollDown();
+  return m.querySelector('.bubble');
+}
+function showTyping(into){
+  const t=document.createElement('div'); t.className='typing';
+  t.innerHTML='<span></span><span></span><span></span>'; into.appendChild(t); scrollDown(); return t;
+}
+async function typeHTML(el,html,ms=420){
+  const t=showTyping(el); await wait(ms); t.remove();
+  const d=document.createElement('div'); d.innerHTML=html; el.appendChild(d); scrollDown();
+}
+
+function toolCard(into,name,args){
+  const card=document.createElement('div'); card.className='toolcall';
+  const argStr=Object.entries(args).map(([k,v])=>`<span class="kv"><span class="k">${k}</span>: <span class="v">${v}</span></span>`).join(' · ');
+  card.innerHTML=`<div class="tc-head"><span class="tag">MCP tool</span><span class="name">${name}</span><span class="stat"><span class="led run"></span><span style="color:var(--amber)">running</span></span></div><div class="tc-body">${argStr}</div>`;
+  into.appendChild(card); scrollDown(); return card;
+}
+function toolResult(card,html,ok=true){
+  card.querySelector('.stat').innerHTML=`<span class="led done"></span><span style="color:var(--ok)">completed</span>`;
+  const r=document.createElement('div'); r.className='tc-result'+(ok?'':' err'); r.innerHTML=html; card.appendChild(r); scrollDown();
+}
+function inlineTable(into,headers,rows){
+  const t=document.createElement('div'); t.className='inline-table';
+  t.innerHTML=`<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  into.appendChild(t); scrollDown();
+}
+function serverPicker(into, cb){
+  const p=document.createElement('div'); p.className='srv-picker';
+  fleet.forEach(s=>{
+    const b=document.createElement('button'); b.className='srv-btn';
+    b.innerHTML=`<span><div class="sname">${s.host}</div><div class="smeta">${s.id} · ${s.ip} · ${s.plan}</div></span><span class="sstate ${s.state}"><span class="sd"></span>${s.state}</span>`;
+    b.onclick=()=>{ p.querySelectorAll('.srv-btn').forEach(x=>x.style.opacity='.35'); b.classList.add('picked'); b.style.opacity='1'; cb(s); };
+    p.appendChild(b);
+  });
+  into.appendChild(p); scrollDown();
+}
+function destructiveConfirm(into, title, body, btnText, onYes, onNo){
+  const c=document.createElement('div'); c.className='confirm';
+  c.innerHTML=`<div class="ch">⚠ ${title}</div><div class="cb">${body}</div><div class="acts"><button class="btn danger">${btnText}</button><button class="btn ghost">Cancel</button></div>`;
+  into.appendChild(c); scrollDown();
+  const [yes,no]=c.querySelectorAll('button');
+  yes.onclick=()=>{ c.querySelector('.acts').innerHTML='<span style="font-size:12px;color:var(--fog)">Confirmed.</span>'; onYes(); };
+  no.onclick=()=>{ c.querySelector('.acts').innerHTML='<span style="font-size:12px;color:var(--fog)">Cancelled.</span>'; onNo(); };
+}
+
+/* =================================================================
+   TOOL HANDLER REGISTRY
+   Each handler: { patterns, needsServer, fn(text, server) }
+   fn is an async generator-like function that drives the chat.
+   ================================================================= */
+const handlers = [
+
+// ----------- ONBOARDING: LIST SERVERS -----------
+{ patterns: [/list.*(server|vps|vds|instance|fleet|machine)/i, /show.*(server|vps|vds|instance|fleet|machine)/i, /my (server|vps|vds)/i, /what (server|vps).* do i have/i, /^servers$/i, /inventory/i],
+  needsServer: false,
+  async fn(text){
+    const b=aiShell();
+    await typeHTML(b,`Let me fetch your server fleet.`);
+    const card=toolCard(b,'vps_list_servers',{});
+    await wait(800);
+    toolResult(card,`200 OK · ${fleet.length} instances returned`);
+    await wait(300);
+    inlineTable(b,['Hostname','ID','State','Plan','IP','DC'],
+      fleet.map(s=>[`<span class="hl">${s.host}</span>`,`<span class="dim">${s.id}</span>`,s.state,s.plan,s.ip,s.dc]));
+    await typeHTML(b,`<p>You have <strong>${fleet.length} servers</strong>. To start managing one, just tell me which server you'd like to work with — for example, <em>"use prod-web-01"</em> — and all subsequent commands will apply to it.</p>`);
+  }
+},
+
+// ----------- SELECT / USE / CONNECT TO SERVER -----------
+{ patterns: [/^use\s+/i, /^select\s+/i, /^connect\s+(to\s+)?/i, /^switch\s+(to\s+)?/i, /work\s+(on|with)\s+/i, /manage\s+/i, /focus\s+(on\s+)?/i],
+  needsServer: false,
+  async fn(text){
+    const name = text.replace(/^(use|select|connect\s+to|connect|switch\s+to|switch|work\s+(on|with)|manage|focus\s+(on)?)\s*/i,'').trim();
+    const s = fleet.find(x=> x.host.toLowerCase()===name.toLowerCase() || x.id.toLowerCase()===name.toLowerCase());
+    if(!s){
+      const b=aiShell();
+      await typeHTML(b,`I couldn't find a server named <strong>${name}</strong>. Here are your servers — pick one:`);
+      serverPicker(b, async (picked)=>{
+        setActive(picked);
+        const b2=aiShell();
+        await typeHTML(b2,`<p>Locked in on <strong>${picked.host}</strong> (<code>${picked.id}</code>). All commands now apply to this server. Here's a quick status:</p>`);
+        const card=toolCard(b2,'vps_get_server',{server_id:picked.id});
+        await wait(700);
+        toolResult(card,`${picked.host} · ${picked.state} · ${picked.plan} (${picked.cpu} vCPU, ${picked.ram})\nIP ${picked.ip} · OS ${picked.os} · DC ${picked.dc}\nCPU ${picked.metrics.cpu}% · RAM ${picked.metrics.ram}% · Disk ${picked.metrics.disk}%`);
+        busy=false; sendBtn.disabled=false;
+      });
+      return 'pause';
+    }
+    setActive(s);
+    const b=aiShell();
+    await typeHTML(b,`Now working with <strong>${s.host}</strong> (<code>${s.id}</code>). All commands will apply here. Let me pull the current status.`);
+    const card=toolCard(b,'vps_get_server',{server_id:s.id});
+    await wait(700);
+    toolResult(card,`${s.host} · ${s.state} · ${s.plan} (${s.cpu} vCPU, ${s.ram})\nIP ${s.ip} · OS ${s.os} · DC ${s.dc}` + (s.state==='running'?`\nCPU ${s.metrics.cpu}% · RAM ${s.metrics.ram}% · Disk ${s.metrics.disk}%`:''));
+    await typeHTML(b,`<p><strong>${s.host}</strong> is <code>${s.state}</code>. What would you like to do?</p>`);
+  }
+},
+
+// ----------- SERVER DETAILS -----------
+{ patterns: [/server (details|info|status)/i, /show (details|info|status)/i, /get (server|vps) (info|details|status)/i, /what.*(state|status|config)/i, /describe.*(server|vps)/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    const card=toolCard(b,'vps_get_server',{server_id:s.id});
+    await wait(700);
+    toolResult(card,`${s.host} · ${s.state} · ${s.plan} (${s.cpu} vCPU, ${s.ram}, ${s.disk})\nIP ${s.ip} · OS ${s.os} · DC ${s.dc}\nHostname: ${s.hostname}\nNameservers: ${s.ns.join(', ')}\nSSH Keys: ${s.sshkeys.length||'none'} · Firewalls: ${s.firewalls.length||'none'}\nSnapshots: ${s.snapshots.length}/2` + (s.state==='running'?`\nCPU ${s.metrics.cpu}% · RAM ${s.metrics.ram}% · Disk ${s.metrics.disk}%`:''));
+    await typeHTML(b,`That's the full detail for <strong>${s.host}</strong>. Anything you'd like to change?`);
+  }
+},
+
+// ----------- START -----------
+{ patterns: [/^start/i, /start.*(server|vps)/i, /boot/i, /bring.*(up|online)/i, /power\s*on/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    if(s.state==='running'){ await typeHTML(b,`<strong>${s.host}</strong> is already running — no action needed.`); return; }
+    await typeHTML(b,`Starting <strong>${s.host}</strong>…`);
+    const card=toolCard(b,'vps_start_server',{server_id:s.id});
+    setState(s,'starting'); const a=track('start',s.id);
+    await wait(800);
+    toolResult(card,`202 Accepted · action <span class="action-id">${a.id}</span>\nstate: stopped → starting`);
+    await wait(2600);
+    setState(s,'running'); s.metrics={cpu:3,ram:22,disk:s.metrics.disk}; finish(a); flash(s);
+    await typeHTML(b,`<strong>${s.host}</strong> is now <code>running</code>. Boot confirmed in ${a.dur}.`);
+  }
+},
+
+// ----------- STOP -----------
+{ patterns: [/^stop/i, /stop.*(server|vps)/i, /shut\s*down/i, /power\s*off/i, /bring.*(down|offline)/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    if(s.state==='stopped'){ await typeHTML(b,`<strong>${s.host}</strong> is already stopped.`); return; }
+    await typeHTML(b,`Sending graceful ACPI shutdown to <strong>${s.host}</strong>…`);
+    const card=toolCard(b,'vps_stop_server',{server_id:s.id});
+    setState(s,'stopping'); const a=track('stop',s.id);
+    await wait(800);
+    toolResult(card,`202 Accepted · action <span class="action-id">${a.id}</span>\nstate: running → stopping`);
+    await wait(2200);
+    setState(s,'stopped'); s.metrics.cpu=0; s.metrics.ram=0; finish(a); flash(s);
+    await typeHTML(b,`<strong>${s.host}</strong> is now <code>stopped</code>. Graceful shutdown completed in ${a.dur}.`);
+  }
+},
+
+// ----------- RESTART -----------
+{ patterns: [/restart/i, /reboot/i, /bounce/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    if(s.state!=='running'){ await typeHTML(b,`<strong>${s.host}</strong> is <code>${s.state}</code> — restart requires a running server. Try <em>start</em> instead.`); return; }
+    await typeHTML(b,`Restarting <strong>${s.host}</strong> with a graceful ACPI reboot…`);
+    const card=toolCard(b,'vps_restart_server',{server_id:s.id});
+    setState(s,'restarting'); const a=track('restart',s.id);
+    await wait(800);
+    toolResult(card,`202 Accepted · action <span class="action-id">${a.id}</span>\nstate: running → restarting → running`);
+    await wait(2800);
+    setState(s,'running'); finish(a); flash(s);
+    await typeHTML(b,`<strong>${s.host}</strong> rebooted cleanly in ${a.dur}. Back to <code>running</code>.`);
+  }
+},
+
+// ----------- FORCE STOP -----------
+{ patterns: [/force\s*(stop|off|kill|halt)/i, /hard\s*(stop|off|kill|halt|power)/i, /pull\s*the\s*plug/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    await typeHTML(b,`Force-stopping <strong>${s.host}</strong> — this is equivalent to pulling the power cord. Data loss is possible.`);
+    const card=toolCard(b,'vps_force_stop',{server_id:s.id});
+    setState(s,'stopping'); const a=track('force_stop',s.id);
+    await wait(600);
+    toolResult(card,`202 Accepted · action <span class="action-id">${a.id}</span>\n⚠ Warning: may cause filesystem corruption`);
+    await wait(1400);
+    setState(s,'stopped'); s.metrics.cpu=0; s.metrics.ram=0; finish(a); flash(s);
+    await typeHTML(b,`<strong>${s.host}</strong> is now <code>stopped</code> (forced).`);
+  }
+},
+
+// ----------- SET HOSTNAME -----------
+{ patterns: [/(set|change|update|rename)\s*(the\s+)?host\s*name/i, /hostname/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    const m=text.match(/(?:to|=)\s*([a-zA-Z0-9._-]+)/);
+    const newName = m ? m[1] : 'my-server.example.com';
+    await typeHTML(b,`Setting the hostname on <strong>${s.host}</strong> to <code>${newName}</code>.`);
+    const card=toolCard(b,'vps_set_hostname',{server_id:s.id, hostname:newName});
+    await wait(700); bumpRate();
+    s.hostname=newName;
+    toolResult(card,`200 OK · hostname updated\nnew hostname: ${newName}\nRFC 1123 valid ✓`);
+    renderFleet();
+    await typeHTML(b,`Hostname updated. Note: you may also want to set a matching PTR record for reverse DNS. Just say <em>"set PTR"</em>.`);
+  }
+},
+
+// ----------- SET NAMESERVERS -----------
+{ patterns: [/(set|change|update|configure)\s*(custom\s+)?name\s*server/i, /dns\s*resolver/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    const ns=['1.1.1.1','1.0.0.1'];
+    await typeHTML(b,`Configuring custom nameservers on <strong>${s.host}</strong> to Cloudflare DNS (${ns.join(', ')}).`);
+    const card=toolCard(b,'vps_set_nameservers',{server_id:s.id, nameservers:ns.join(', ')});
+    await wait(700); bumpRate(); s.ns=ns;
+    toolResult(card,`200 OK · nameservers updated\n${ns.join(' , ')}\nIPv4 format valid ✓`);
+    await typeHTML(b,`Done — DNS resolvers updated on <strong>${s.host}</strong>.`);
+  }
+},
+
+// ----------- RESET ROOT PASSWORD -----------
+{ patterns: [/(set|change|reset|update)\s*(the\s+)?(root\s+)?password/i, /root\s*password/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    await typeHTML(b,`Resetting the root password on <strong>${s.host}</strong>. A strong password will be generated — it's write-only and won't appear in any GET response.`);
+    const card=toolCard(b,'vps_set_root_password',{server_id:s.id, password:'••••••••••••••••'});
+    await wait(700); bumpRate();
+    toolResult(card,`200 OK · root password updated\nstrength: strong (20 chars, mixed) ✓\n⚠ May require restart to take effect\nAudit log: entry created`);
+    const a=track('set_root_password',s.id); finish(a);
+    await typeHTML(b,`Password reset complete. The new password was returned in the response — copy it now as it won't be shown again. A server restart may be needed.`);
+  }
+},
+
+// ----------- METRICS -----------
+{ patterns: [/metric/i, /cpu|ram|memory|disk|bandwidth|network/i, /performance/i, /utilization/i, /resource/i, /monitoring/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    if(s.state!=='running'){ await typeHTML(b,`<strong>${s.host}</strong> is <code>${s.state}</code> — metrics are only available for running servers.`); return; }
+    await typeHTML(b,`Fetching metrics for <strong>${s.host}</strong> over the last hour.`);
+    const card=toolCard(b,'vps_get_metrics',{server_id:s.id, range:'last_hour', granularity:'5min'});
+    await wait(800); bumpRate();
+    toolResult(card,`200 OK · 12 data points\nCPU avg ${s.metrics.cpu}% · peak ${s.metrics.cpu+18}% at ${new Date().getHours()-1}:32\nRAM avg ${s.metrics.ram}% · steady\nDisk ${s.metrics.disk}% used\nNet in: 142 MB · out: 891 MB`);
+    await typeHTML(b,`<strong>${s.host}</strong> CPU averaged <strong>${s.metrics.cpu}%</strong> over the last hour, peaking at ${s.metrics.cpu+18}% around ${new Date().getHours()-1}:32. RAM is steady at ${s.metrics.ram}%, disk at ${s.metrics.disk}%. Network throughput: 142 MB in, 891 MB out. Everything looks healthy.`);
+  }
+},
+
+// ----------- RESIZE / UPGRADE -----------
+{ patterns: [/resize/i, /upgrade/i, /scale\s*(up|down)/i, /change\s*(the\s+)?plan/i, /more\s*(ram|cpu|memory|cores)/i, /downgrade/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    const curIdx=planCatalog.findIndex(p=>p.slug===s.plan.toLowerCase().replace(' ','-'));
+    const target=planCatalog[Math.min(curIdx+1, planCatalog.length-1)];
+    await typeHTML(b,`Resizing <strong>${s.host}</strong> from <strong>${s.plan}</strong> (${s.cpu} vCPU, ${s.ram}) to <strong>${target.n}</strong> (${target.cpu} vCPU, ${target.ram}). CPU/RAM-only resize is reversible — disk untouched.`);
+    const card=toolCard(b,'vps_resize_server',{server_id:s.id, plan:target.slug, mode:'cpu_ram'});
+    setState(s,'resizing'); const a=track('resize',s.id);
+    await wait(800);
+    toolResult(card,`target plan available in ${s.dc} ✓\nresize mode: reversible (CPU/RAM)\n202 Accepted · action <span class="action-id">${a.id}</span>`);
+    await wait(3200);
+    s.plan=target.n; s.cpu=target.cpu; s.ram=target.ram;
+    setState(s,'running'); finish(a); flash(s);
+    await typeHTML(b,`Resize complete — <strong>${s.host}</strong> is now <strong>${target.n}</strong> with ${target.cpu} vCPU and ${target.ram}. Same IP, same server ID. This was reversible, so you can scale back down anytime.`);
+  }
+},
+
+// ----------- RECREATE / REIMAGE (destructive) -----------
+{ patterns: [/recreate/i, /reimage/i, /reinstall\s*(os|server)/i, /wipe/i, /fresh\s*install/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    await typeHTML(b,`This is a <strong>destructive operation</strong>. Before I reimage <strong>${s.host}</strong>, I need you to confirm what will happen:`);
+    return new Promise(res=>{
+      destructiveConfirm(b,
+        `Confirm reimage: ${s.host}`,
+        `Running <code>vps_recreate_server</code> on <strong>${s.host}</strong> (<code>${s.id}</code>) will:<ul><li>All data on the boot disk — <strong>permanently erased</strong></li><li>All on-server snapshots — <strong>destroyed</strong></li><li>Off-server backups are <strong>kept</strong></li><li>IP address and server ID are <strong>retained</strong></li></ul>`,
+        'Yes, reimage it',
+        async ()=>{
+          const card=toolCard(b,'vps_recreate_server',{server_id:s.id, template:'ubuntu-24', confirm:'RECREATE'});
+          setState(s,'provisioning'); const a=track('recreate',s.id);
+          await wait(900);
+          toolResult(card,`confirmation accepted ✓\n202 Accepted · action <span class="action-id">${a.id}</span>\nreimaging — disk wiped, reinstalling Ubuntu 24.04`);
+          await wait(3600);
+          s.apps=[]; s.snapshots=[]; s.docker=[]; s.metrics={cpu:2,ram:8,disk:4};
+          setState(s,'running'); finish(a); flash(s);
+          await typeHTML(b,`Reimage complete — <strong>${s.host}</strong> is freshly provisioned with Ubuntu 24.04 and running. All prior data was destroyed as confirmed; off-server backups remain.`);
+          res();
+        },
+        async ()=>{
+          await typeHTML(b,`Cancelled — <strong>${s.host}</strong> is untouched.`);
+          res();
+        }
+      );
+    });
+  }
+},
+
+// ----------- LIST APP TEMPLATES -----------
+{ patterns: [/list.*(app|template|catalog|marketplace)/i, /available\s*app/i, /what\s*(can\s*i|apps?)\s*(install|deploy)/i, /app\s*catalog/i, /show.*(app|template)/i, /browse.*(app|template)/i, /softaculous/i],
+  needsServer: false,
+  async fn(text){
+    const b=aiShell();
+    await typeHTML(b,`Browsing the Bluehost application catalog — these are one-click installs available on any VPS.`);
+    const card=toolCard(b,'vps_list_app_templates',{});
+    await wait(700); bumpRate();
+    toolResult(card,`200 OK · ${appCatalog.length} templates`);
+    inlineTable(b,['App','Version','Category','Min RAM'],
+      appCatalog.map(a=>[`<span class="hl">${a.i} ${a.n}</span>`,a.v,a.cat,a.minRam]));
+    await typeHTML(b,`<p>That's <strong>${appCatalog.length} apps</strong> available for one-click install. Just say <em>"install WordPress"</em> or any app name, and I'll deploy it to ${activeServer?`<strong>${activeServer.host}</strong>`:'your selected server'}.</p>`);
+  }
+},
+
+// ----------- INSTALL APP -----------
+{ patterns: [/install\s+(\w+)/i, /deploy\s+(\w+)/i, /set\s*up\s+(\w+)/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    const nameMatch=text.match(/(?:install|deploy|set\s*up)\s+(\w+)/i);
+    const slug=nameMatch?nameMatch[1].toLowerCase():'wordpress';
+    const app=appCatalog.find(a=>a.slug===slug||a.n.toLowerCase()===slug);
+    if(!app){
+      await typeHTML(b,`I don't see <strong>${slug}</strong> in the catalog. Here's what's available:`);
+      inlineTable(b,['App','Slug'],appCatalog.map(a=>[`${a.i} ${a.n}`,`<span class="hl">${a.slug}</span>`]));
+      return;
+    }
+    await typeHTML(b,`Installing <strong>${app.n} ${app.v}</strong> on <strong>${s.host}</strong>. Checking requirements and deploying…`);
+    const card=toolCard(b,'vps_install_app',{server_id:s.id, app_slug:app.slug, domain:`${s.host}.example.com`});
+    setState(s,'installing'); const a=track('install_app',s.id);
+    await wait(800);
+    toolResult(card,`requirements: OK (${s.ram} ≥ ${app.minRam}) ✓\n202 Accepted · action <span class="action-id">${a.id}</span>\ninstalling asynchronously…`);
+    await wait(3200);
+    s.apps.push({n:app.n,v:app.v,i:app.i,c:app.c,url:`${s.host}.example.com`});
+    setState(s,'running'); finish(a); flash(s);
+    await typeHTML(b,`<strong>${app.n}</strong> is live on <strong>${s.host}</strong> at <code>${s.host}.example.com</code>. Admin credentials were returned in the action response — copy them now (write-only).`);
+  }
+},
+
+// ----------- LIST INSTALLED APPS -----------
+{ patterns: [/installed\s*app/i, /what.*(installed|deployed|running)/i, /list\s*(my\s+)?app/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    const card=toolCard(b,'vps_list_installed_apps',{server_id:s.id});
+    await wait(600); bumpRate();
+    if(!s.apps.length){
+      toolResult(card,`200 OK · 0 applications installed`);
+      await typeHTML(b,`No apps installed on <strong>${s.host}</strong> yet. Say <em>"list app templates"</em> to see what's available.`);
+    } else {
+      toolResult(card,`200 OK · ${s.apps.length} application(s)`);
+      inlineTable(b,['App','Version','URL'],s.apps.map(a=>[`${a.i} <span class="hl">${a.n}</span>`,a.v,`<span class="hl">${a.url}</span>`]));
+    }
+  }
+},
+
+// ----------- UNINSTALL APP (destructive) -----------
+{ patterns: [/uninstall/i, /remove\s*app/i, /delete\s*app/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    if(!s.apps.length){ await typeHTML(b,`No apps installed on <strong>${s.host}</strong> — nothing to remove.`); return; }
+    const app=s.apps[0];
+    await typeHTML(b,`You're asking to uninstall <strong>${app.n}</strong> from <strong>${s.host}</strong>. This will remove the application, its config, and optionally its database.`);
+    return new Promise(res=>{
+      destructiveConfirm(b,`Confirm uninstall: ${app.n}`,
+        `This will remove <strong>${app.n}</strong> from <strong>${s.host}</strong>. The application files and database will be deleted.`,
+        'Yes, uninstall',
+        async()=>{ const card=toolCard(b,'vps_uninstall_app',{server_id:s.id,app:app.n,confirm:'DELETE'});
+          const a=track('uninstall_app',s.id); await wait(800);
+          s.apps.splice(0,1); finish(a); renderFleet();
+          toolResult(card,`200 OK · ${app.n} removed\ndatabase dropped ✓`);
+          await typeHTML(b,`<strong>${app.n}</strong> has been removed from <strong>${s.host}</strong>.`); res();
+        },
+        async()=>{ await typeHTML(b,`Cancelled — <strong>${app.n}</strong> stays.`); res(); }
+      );
+    });
+  }
+},
+
+// ----------- SNAPSHOT: CREATE -----------
+{ patterns: [/snapshot|take\s*snap|save\s*state|create\s*snap/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    if(s.snapshots.length>=2){ await typeHTML(b,`<strong>${s.host}</strong> already has 2 snapshots (the max). Delete one first with <em>"delete snapshot"</em>.`); return; }
+    await typeHTML(b,`Taking an on-demand snapshot of <strong>${s.host}</strong>. This is crash-consistent and near-instant.`);
+    const card=toolCard(b,'vps_create_snapshot',{server_id:s.id, label:'pre-change'});
+    const a=track('snapshot',s.id); await wait(800); bumpRate();
+    const sid='snap_'+Math.random().toString(36).slice(2,5);
+    s.snapshots.push(sid);
+    finish(a); renderFleet();
+    toolResult(card,`200 OK · snapshot ${sid} created\nlabel: "pre-change" · size: 4.2 GB\nexpires in 30 days\n${s.snapshots.length} of 2 snapshot slots used`);
+    await typeHTML(b,`Snapshot <code>${sid}</code> saved. ${s.snapshots.length}/2 slots used on <strong>${s.host}</strong>. I can restore from it anytime.`);
+  }
+},
+
+// ----------- SNAPSHOT: LIST -----------
+{ patterns: [/list\s*snap/i, /show\s*snap/i, /recovery\s*point/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    const card=toolCard(b,'vps_list_snapshots',{server_id:s.id});
+    await wait(600); bumpRate();
+    toolResult(card,`200 OK · ${s.snapshots.length} snapshot(s)`);
+    if(s.snapshots.length) inlineTable(b,['Snapshot ID','Size','Expires'],s.snapshots.map(id=>[`<span class="hl">${id}</span>`,'4.2 GB','29 days']));
+    else await typeHTML(b,`No snapshots on <strong>${s.host}</strong>. Say <em>"take a snapshot"</em> to create one.`);
+  }
+},
+
+// ----------- SNAPSHOT: RESTORE (destructive) -----------
+{ patterns: [/restore\s*snap/i, /rollback/i, /revert\s*to\s*snap/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    if(!s.snapshots.length){ await typeHTML(b,`No snapshots to restore on <strong>${s.host}</strong>.`); return; }
+    const sid=s.snapshots[0];
+    await typeHTML(b,`Restoring <strong>${s.host}</strong> from snapshot <code>${sid}</code>. This will overwrite all current data.`);
+    return new Promise(res=>{
+      destructiveConfirm(b,`Confirm restore: ${s.host} ← ${sid}`,
+        `<ul><li>All current data on the server will be <strong>overwritten</strong></li><li>Server enters locked state during restore</li><li>Cannot be cancelled once started</li><li>Duration: 1–10 minutes</li></ul>`,
+        'Yes, restore',
+        async()=>{ const card=toolCard(b,'vps_restore_snapshot',{server_id:s.id,snapshot_id:sid,confirm:'RESTORE'});
+          setState(s,'restoring'); const a=track('restore_snapshot',s.id);
+          await wait(900); toolResult(card,`202 Accepted · action <span class="action-id">${a.id}</span>\nserver locked · restoring from ${sid}`);
+          await wait(3000); setState(s,'running'); finish(a); flash(s);
+          await typeHTML(b,`Restore complete. <strong>${s.host}</strong> is running with the state from snapshot <code>${sid}</code>.`); res();
+        },
+        async()=>{ await typeHTML(b,`Cancelled — no restore performed.`); res(); }
+      );
+    });
+  }
+},
+
+// ----------- SNAPSHOT: DELETE -----------
+{ patterns: [/delete\s*snap/i, /remove\s*snap/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    if(!s.snapshots.length){ await typeHTML(b,`No snapshots on <strong>${s.host}</strong>.`); return; }
+    const sid=s.snapshots.pop();
+    const card=toolCard(b,'vps_delete_snapshot',{server_id:s.id,snapshot_id:sid});
+    await wait(600); bumpRate();
+    toolResult(card,`200 OK · ${sid} deleted\ndisk freed: 4.2 GB\n${s.snapshots.length}/2 slots now used`);
+    renderFleet();
+    await typeHTML(b,`Snapshot <code>${sid}</code> deleted. ${s.snapshots.length} snapshot(s) remain.`);
+  }
+},
+
+// ----------- LIST BACKUPS -----------
+{ patterns: [/list\s*backup/i, /show\s*backup/i, /backup/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    const card=toolCard(b,'vps_list_backups',{server_id:s.id});
+    await wait(600); bumpRate();
+    toolResult(card,`200 OK · 3 backups\nbkp_w01 · weekly · 12.4 GB · completed\nbkp_w02 · weekly · 12.1 GB · completed\nbkp_d01 · daily · 11.9 GB · completed`);
+    inlineTable(b,['Backup ID','Type','Size','Status'],[
+      ['<span class="hl">bkp_w01</span>','weekly','12.4 GB','completed'],
+      ['<span class="hl">bkp_w02</span>','weekly','12.1 GB','completed'],
+      ['<span class="hl">bkp_d01</span>','daily','11.9 GB','completed'],
+    ]);
+    await typeHTML(b,`3 backups available for <strong>${s.host}</strong>. Say <em>"restore backup"</em> to roll back to any of these (destructive — will ask for confirmation).`);
+  }
+},
+
+// ----------- FIREWALL -----------
+{ patterns: [/firewall/i, /block.*(port|ip|traffic)/i, /lock\s*down/i, /secure.*(server|port)/i, /open\s*port/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    await typeHTML(b,`Creating a web-server firewall for <strong>${s.host}</strong>: allow SSH (22), HTTP (80), HTTPS (443) inbound — default deny everything else.`);
+    const card=toolCard(b,'vps_create_firewall',{name:'fw_web'});
+    await wait(500); bumpRate();
+    toolResult(card,`200 OK · firewall fw_web created`);
+    const card2=toolCard(b,'vps_manage_firewall_rule',{firewall:'fw_web', rules:'22/tcp allow, 80/tcp allow, 443/tcp allow'});
+    await wait(500); bumpRate();
+    toolResult(card2,`200 OK · 3 rules added`);
+    const card3=toolCard(b,'vps_attach_firewall',{server_id:s.id, firewall:'fw_web'});
+    const a=track('firewall',s.id); await wait(600);
+    s.firewalls.push('fw_web'); finish(a); renderFleet();
+    toolResult(card3,`200 OK · fw_web activated on ${s.id}\ninbound: 22/tcp, 80/tcp, 443/tcp · default deny all`);
+    await typeHTML(b,`Firewall <code>fw_web</code> is active on <strong>${s.host}</strong>. Only SSH, HTTP, and HTTPS traffic is allowed inbound. The ruleset is reusable — I can attach it to other servers too.`);
+  }
+},
+
+// ----------- SSH KEY -----------
+{ patterns: [/ssh\s*key/i, /add.*key/i, /attach.*key/i, /authorized.key/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    await typeHTML(b,`Adding an SSH key to <strong>${s.host}</strong>.`);
+    const card=toolCard(b,'vps_create_ssh_key',{name:'deploy-key', type:'ssh-ed25519'});
+    await wait(600); bumpRate();
+    toolResult(card,`200 OK · key_deploy created\nfingerprint: SHA256:xYz...abc\nformat: ssh-ed25519 ✓`);
+    const card2=toolCard(b,'vps_attach_ssh_key',{server_id:s.id, key_id:'key_deploy'});
+    await wait(500); bumpRate();
+    s.sshkeys.push('key_deploy');
+    toolResult(card2,`200 OK · key_deploy attached to ${s.id}\nadded to authorized_keys`);
+    renderFleet();
+    await typeHTML(b,`SSH key <code>key_deploy</code> is now attached to <strong>${s.host}</strong>. You can connect with <code>ssh root@${s.ip}</code>.`);
+  }
+},
+
+// ----------- MALWARE SCANNER -----------
+{ patterns: [/malware/i, /scan/i, /security\s*scan/i, /threat/i, /monarx/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    await typeHTML(b,`Installing the malware scanner on <strong>${s.host}</strong> and fetching the latest results.`);
+    const card=toolCard(b,'vps_install_malware_scanner',{server_id:s.id});
+    const a=track('install_scanner',s.id); await wait(800);
+    finish(a);
+    toolResult(card,`200 OK · scanner agent deployed\nstatus: active · last scan: just now`);
+    const card2=toolCard(b,'vps_get_malware_metrics',{server_id:s.id});
+    await wait(600); bumpRate();
+    toolResult(card2,`files scanned: 14,247\nthreats detected: 0\nthreats cleaned: 0\nlast scan: just now`);
+    await typeHTML(b,`Scanner is active on <strong>${s.host}</strong>. Last scan completed just now — <strong>14,247 files scanned, 0 threats detected</strong>. All clear.`);
+  }
+},
+
+// ----------- DOCKER COMPOSE DEPLOY -----------
+{ patterns: [/docker/i, /compose/i, /container/i, /deploy.*stack/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    await typeHTML(b,`Deploying a Docker Compose project to <strong>${s.host}</strong>. I'll validate the YAML and check for security flags before bringing the stack up.`);
+    const card=toolCard(b,'vps_deploy_compose',{server_id:s.id, project:'app-stack', services:'3'});
+    setState(s,'installing'); const a=track('deploy_compose',s.id);
+    await wait(800);
+    toolResult(card,`compose YAML valid ✓ · 3 services\nsecurity: no privileged / host-net ✓\n202 Accepted · action <span class="action-id">${a.id}</span>`);
+    await wait(2800);
+    s.docker.push({n:'app-stack',containers:3});
+    s.apps.push({n:'app-stack (Docker)',v:'3 services',i:'🐳',c:'#2496ed',url:'compose'});
+    setState(s,'running'); finish(a); flash(s);
+    await typeHTML(b,`Stack <code>app-stack</code> is up — 3 containers running on <strong>${s.host}</strong>. I can fetch logs with <code>vps_docker_logs</code> — no SSH needed.`);
+  }
+},
+
+// ----------- DOCKER LOGS -----------
+{ patterns: [/docker.*log/i, /compose.*log/i, /container.*log/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    const card=toolCard(b,'vps_docker_logs',{server_id:s.id, project:'app-stack', tail:'50'});
+    await wait(800); bumpRate();
+    toolResult(card,`[web]  2026-06-20T10:22:01Z  GET /api/health 200 3ms\n[web]  2026-06-20T10:22:04Z  GET /api/users 200 47ms\n[db]   2026-06-20T10:22:05Z  connection pool: 4/20 active\n[cache] 2026-06-20T10:22:05Z  hit ratio: 94.2%\n... 46 more lines\n\nNo errors detected in last 50 lines.`);
+    await typeHTML(b,`Logs look clean. Web service is responding in &lt;50ms, DB pool is healthy (4/20), cache hit ratio is 94.2%. No errors in the last 50 lines.`);
+  }
+},
+
+// ----------- POST-INSTALL SCRIPTS -----------
+{ patterns: [/post.?install\s*script/i, /startup\s*script/i, /provision\s*script/i, /init\s*script/i],
+  needsServer: false,
+  async fn(text){
+    const b=aiShell();
+    await typeHTML(b,`Here are your account-level post-install scripts. These run automatically when provisioning or reimaging a VPS.`);
+    const card=toolCard(b,'vps_list_scripts',{});
+    await wait(600); bumpRate();
+    toolResult(card,`200 OK · 2 scripts\nscript_01 · "base-setup" · 2.1 KB · created 2026-05-11\nscript_02 · "docker-init" · 1.4 KB · created 2026-06-01`);
+    inlineTable(b,['ID','Name','Size'],[['<span class="hl">script_01</span>','base-setup','2.1 KB'],['<span class="hl">script_02</span>','docker-init','1.4 KB']]);
+    await typeHTML(b,`2 scripts on file. You can reference these by ID when provisioning or reimaging a server. Say <em>"create script"</em> to add a new one.`);
+  }
+},
+
+// ----------- RECOVERY MODE -----------
+{ patterns: [/recovery\s*mode/i, /rescue\s*mode/i, /rescue\s*os/i, /boot.*rescue/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    await typeHTML(b,`Booting <strong>${s.host}</strong> into recovery mode. This loads a minimal rescue OS — your original disk will be mounted read-only at <code>/mnt/original</code>.`);
+    const card=toolCard(b,'vps_start_recovery',{server_id:s.id});
+    const a=track('recovery_mode',s.id); await wait(900);
+    toolResult(card,`202 Accepted · action <span class="action-id">${a.id}</span>\nrescue OS booting\ntemp root password: ••••••••••\nSSH: ssh root@${s.ip}\noriginal disk mounted at /mnt/original (read-only)`);
+    await wait(2200); finish(a);
+    await typeHTML(b,`Recovery mode active on <strong>${s.host}</strong>. Connect with <code>ssh root@${s.ip}</code> using the temporary credentials above. Your disk is at <code>/mnt/original</code>. Say <em>"exit recovery"</em> when done.`);
+  }
+},
+
+// ----------- PTR RECORDS -----------
+{ patterns: [/ptr/i, /reverse\s*dns/i, /rdns/i],
+  needsServer: true,
+  async fn(text,s){
+    const b=aiShell();
+    await typeHTML(b,`Setting a PTR (reverse DNS) record for <strong>${s.host}</strong>'s IP to match its hostname.`);
+    const card=toolCard(b,'vps_create_ptr',{server_id:s.id, ip:s.ip, fqdn:s.hostname});
+    await wait(700); bumpRate();
+    toolResult(card,`200 OK · PTR record set\n${s.ip} → ${s.hostname}\nforward DNS match: ✓`);
+    await typeHTML(b,`PTR record set — <code>${s.ip}</code> now resolves to <code>${s.hostname}</code>. Outbound emails from this IP should now pass SPF/DKIM checks.`);
+  }
+},
+
+// ----------- LIST PLANS -----------
+{ patterns: [/list.*(plan|pricing|tier)/i, /available\s*plan/i, /show.*(plan|pricing)/i, /how\s*much/i, /what.*plan/i],
+  needsServer: false,
+  async fn(text){
+    const b=aiShell();
+    await typeHTML(b,`Here are all VPS and VDS plans available via the API.`);
+    const card=toolCard(b,'vps_list_plans',{});
+    await wait(600); bumpRate();
+    toolResult(card,`200 OK · ${planCatalog.length} plans`);
+    inlineTable(b,['Plan','vCPU','RAM','Disk','BW','Price'],
+      planCatalog.map(p=>[`<span class="hl">${p.n}</span>`,p.cpu,p.ram,p.disk,p.bw,`<span class="hl">${p.price}</span>/mo`]));
+  }
+},
+
+// ----------- LIST OS TEMPLATES -----------
+{ patterns: [/list.*(os|template|image|operating)/i, /available\s*(os|template|image)/i, /show.*(os|template|image)/i, /what.*os/i],
+  needsServer: false,
+  async fn(text){
+    const b=aiShell();
+    const card=toolCard(b,'vps_list_os_templates',{});
+    await wait(600); bumpRate();
+    toolResult(card,`200 OK · ${osCatalog.length} templates`);
+    inlineTable(b,['OS','Version','Arch','Category'],
+      osCatalog.map(o=>[`<span class="hl">${o.n}</span>`,o.v,o.arch,o.cat]));
+    await typeHTML(b,`${osCatalog.length} OS templates available. Reference the template ID when provisioning or reimaging.`);
+  }
+},
+
+// ----------- LIST DATA CENTERS -----------
+{ patterns: [/data\s*cent(er|re)/i, /region/i, /location/i, /where.*server/i, /dc/i],
+  needsServer: false,
+  async fn(text){
+    const b=aiShell();
+    const card=toolCard(b,'vps_list_datacenters',{});
+    await wait(600); bumpRate();
+    toolResult(card,`200 OK · ${dcCatalog.length} data centers`);
+    inlineTable(b,['ID','Location','Region','Status'],
+      dcCatalog.map(d=>[`<span class="hl">${d.id}</span>`,d.city,d.region,`<span class="hl">${d.status}</span>`]));
+  }
+},
+
+// ----------- LIST ACTIONS -----------
+{ patterns: [/list.*(action|operation|job)/i, /show.*(action|operation)/i, /recent\s*(action|operation)/i, /action\s*log/i, /what.*(happen|running|pending)/i],
+  needsServer: false,
+  async fn(text){
+    const b=aiShell();
+    const card=toolCard(b,'vps_list_actions',{});
+    await wait(500); bumpRate();
+    if(!actions.length){
+      toolResult(card,`200 OK · 0 actions`);
+      await typeHTML(b,`No actions recorded yet. Every async operation (start, stop, resize, restore, etc.) creates an action with a trackable ID.`);
+    } else {
+      toolResult(card,`200 OK · ${actions.length} action(s)\n${actions.slice(0,5).map(a=>`${a.id} · ${a.type} · ${a.status}${a.dur?' · '+a.dur:''}`).join('\n')}`);
+    }
+  }
+},
+
+]; // end handlers
+
+/* =================================================================
+   ROUTING ENGINE
+   ================================================================= */
+function findHandler(text){
+  for(const h of handlers){
+    for(const p of h.patterns){ if(p.test(text)) return h; }
+  }
+  return null;
+}
+
+async function handle(text){
+  if(busy||!text.trim()) return;
+  busy=true; sendBtn.disabled=true;
+  addUserMsg(text);
+  await wait(350);
+
+  const h = findHandler(text);
+  if(!h){
+    addAiMsg(`I understand you'd like to do something, but I'm not sure which tool to call. Here are some things you can try:<p>
+      <strong>Server management:</strong> list servers, start, stop, restart, resize, set hostname, reset password, metrics<br>
+      <strong>Apps:</strong> list app templates, install WordPress, list installed apps, uninstall app<br>
+      <strong>Security:</strong> set up firewall, add SSH key, run malware scan<br>
+      <strong>Data:</strong> take snapshot, list snapshots, restore snapshot, list backups<br>
+      <strong>Docker:</strong> deploy compose, docker logs<br>
+      <strong>Catalog:</strong> list plans, list OS templates, list data centers<br>
+      <strong>Recovery:</strong> recovery mode, set PTR record, post-install scripts</p>
+      <p>Or just tell me in plain English what you want to do — I'll find the right tool.</p>`);
+    busy=false; sendBtn.disabled=false; return;
+  }
+
+  // If handler needs a server and none is active, ask
+  if(h.needsServer && !activeServer){
+    const b=aiShell();
+    await typeHTML(b,`Which server should I apply this to? Pick one:`);
+    serverPicker(b, async(picked)=>{
+      setActive(picked);
+      const b2=aiShell();
+      await typeHTML(b2,`Got it — working with <strong>${picked.host}</strong>.`);
+      const result = await h.fn(text, picked);
+      if(result!=='pause'){ busy=false; sendBtn.disabled=false; }
+    });
+    return;
+  }
+
+  const result = await h.fn(text, activeServer);
+  if(result!=='pause'){ busy=false; sendBtn.disabled=false; }
+}
+
+/* =================================================================
+   SUGGESTIONS (context-aware)
+   ================================================================= */
+function updateSuggestions(){
+  const sg=document.getElementById('suggest'); sg.innerHTML='';
+  let chips=[];
+  if(!activeServer){
+    chips=['List my servers','Show available plans','List app templates','List OS templates','List data centers'];
+  } else {
+    const s=activeServer;
+    chips=[`Show ${s.host} details`];
+    if(s.state==='running') chips.push('Restart','Stop','Get metrics');
+    if(s.state==='stopped') chips.push('Start');
+    chips.push('Set hostname','Install WordPress','Take a snapshot','Set up firewall','Add SSH key','Deploy Docker compose','Run malware scan','Set PTR record');
+    if(s.apps.length) chips.push('List installed apps');
+    chips.push('Resize / upgrade');
+  }
+  chips.forEach(t=>{
+    const c=document.createElement('div'); c.className='chip'; c.textContent=t;
+    c.onclick=()=>{ if(busy)return; handle(t); };
+    sg.appendChild(c);
+  });
+}
+
+/* =================================================================
+   ONBOARDING SEQUENCE
+   ================================================================= */
+async function onboard(){
+  await wait(600);
+  const b1=aiShell();
+  await typeHTML(b1,`
+    <p><strong>Connected to Bluehost VPS MCP Server</strong> (<code>@bluehost/vps-mcp-server v1.0</code>)</p>
+    <p>I have access to <strong>52 MCP tools</strong> across 8 capability groups: VM lifecycle, one-click apps, security, snapshots & backups, Docker management, automation, catalog discovery, and platform operations.</p>
+    <p>I can manage your entire VPS fleet through natural language. Let's start — say <em>"list my servers"</em> to see your fleet, then pick a server to work with.</p>
+  `, 500);
+  updateSuggestions();
+}
+
+/* =================================================================
+   DASHBOARD RENDERERS
+   ================================================================= */
+function renderFleet(){
+  const el=document.getElementById('view-fleet');
+  el.innerHTML=`<div class="sectitle">Server fleet · ${fleet.length} instances <span class="ln"></span></div>`;
+  fleet.forEach(s=>{
+    const div=document.createElement('div');
+    div.className='server'+(s._flash?' flash':'')+(activeServer&&activeServer.id===s.id?' active-s':'');
+    const hot=v=>v>75?' hot':'';
+    div.innerHTML=`
+      <div class="top">
+        <span class="shost">${s.host}</span><span class="sid">${s.id}</span>
+        ${s.mcp?'<span class="stag">via MCP</span>':''}
+        <span class="state ${s.state}" style="margin-left:auto"><span class="d"></span>${s.state}</span>
+      </div>
+      <div class="specs">
+        <div class="spec"><div class="l">Plan</div><div class="n">${s.plan}</div></div>
+        <div class="spec"><div class="l">vCPU</div><div class="n">${s.cpu}</div></div>
+        <div class="spec"><div class="l">RAM</div><div class="n">${s.ram}</div></div>
+        <div class="spec"><div class="l">Disk</div><div class="n">${s.disk}</div></div>
+      </div>
+      <div class="meta"><span>IP <b>${s.ip}</b></span><span>OS <b>${s.os}</b></span><span>DC <b>${s.dc}</b></span></div>
+      ${s.state==='running'?`<div class="gauges">
+        <div class="gauge"><div class="gl"><span>CPU</span><b>${s.metrics.cpu}%</b></div><div class="bar"><i class="${hot(s.metrics.cpu)}" style="width:${s.metrics.cpu}%"></i></div></div>
+        <div class="gauge"><div class="gl"><span>RAM</span><b>${s.metrics.ram}%</b></div><div class="bar"><i class="${hot(s.metrics.ram)}" style="width:${s.metrics.ram}%"></i></div></div>
+        <div class="gauge"><div class="gl"><span>Disk</span><b>${s.metrics.disk}%</b></div><div class="bar"><i class="${hot(s.metrics.disk)}" style="width:${s.metrics.disk}%"></i></div></div>
+      </div>`:''}
+      ${s.apps.length?`<div class="applist">${s.apps.map(a=>`<div class="app"><span class="ico" style="background:${a.c}22;color:${a.c}">${a.i}</span><span><div class="nm">${a.n}</div><div class="vr">${a.v}</div></span>${a.url==='compose'?'<span class="badge">running</span>':`<span class="url">${a.url}</span>`}</div>`).join('')}</div>`:''}`;
+    el.appendChild(div);
+  });
+}
+function renderActions(){
+  const el=document.getElementById('actionlog');
+  if(!actions.length){el.innerHTML='<div class="empty">No actions yet.</div>';return;}
+  el.innerHTML=actions.map(a=>`<div class="actrow"><span class="aid">${a.id}</span><span class="atype">${a.type.replace(/_/g,' ')}</span><span class="ast ${a.status}">${a.status.replace('_',' ')}</span><span class="adur">${a.dur||'…'}</span></div>`).join('');
+}
+
+const toolGroups=[
+  {g:'VM Lifecycle',tools:[['vps_list_servers','List all VPS/VDS instances'],['vps_get_server','Full details for one server'],['vps_start_server','Boot a stopped server'],['vps_stop_server','Graceful ACPI shutdown'],['vps_restart_server','Reboot a running server'],['vps_force_stop','Hard power-off'],['vps_set_hostname','Set or reset hostname'],['vps_set_nameservers','Configure DNS resolvers'],['vps_set_root_password','Reset root password'],['vps_recreate_server','Reimage with new OS (destructive)'],['vps_resize_server','Change plan (CPU/RAM/disk)'],['vps_get_metrics','Time-series metrics']]},
+  {g:'One-Click Apps',tools:[['vps_list_app_templates','Browse the app catalog'],['vps_install_app','One-click deploy'],['vps_list_installed_apps','Installed apps on server'],['vps_uninstall_app','Remove an app (destructive)']]},
+  {g:'Security',tools:[['vps_create_firewall','Create named ruleset'],['vps_manage_firewall_rule','Add/update/delete rules'],['vps_attach_firewall','Activate on server'],['vps_list_firewalls','Audit security posture'],['vps_create_ssh_key','Add account SSH key'],['vps_attach_ssh_key','Attach key to server'],['vps_install_malware_scanner','Deploy scanner agent'],['vps_get_malware_metrics','Scan results']]},
+  {g:'Snapshots & Backups',tools:[['vps_create_snapshot','On-demand, crash-consistent'],['vps_list_snapshots','Recovery points'],['vps_restore_snapshot','Roll back (destructive)'],['vps_delete_snapshot','Free disk space'],['vps_list_backups','Off-server backup points'],['vps_restore_backup','Restore from backup (destructive)']]},
+  {g:'Docker Compose',tools:[['vps_deploy_compose','Deploy a compose project'],['vps_list_compose','Projects & container status'],['vps_control_compose','Start/stop/restart'],['vps_update_compose','Pull + recreate'],['vps_delete_compose','Remove project'],['vps_docker_logs','Aggregated logs']]},
+  {g:'Automation & Recovery',tools:[['vps_manage_script','CRUD post-install scripts'],['vps_start_recovery','Boot rescue OS'],['vps_stop_recovery','Exit recovery mode'],['vps_create_ptr','Set reverse DNS'],['vps_delete_ptr','Remove PTR record']]},
+  {g:'Catalog & Discovery',tools:[['vps_list_plans','VPS/VDS plans & pricing'],['vps_list_os_templates','Available OS images'],['vps_list_datacenters','Regions & locations']]},
+  {g:'Platform',tools:[['vps_get_action','Poll async action by ID'],['vps_list_actions','Recent operations']]},
+];
+function renderTools(){
+  const el=document.getElementById('view-tools');
+  const total=toolGroups.reduce((n,g)=>n+g.tools.length,0);
+  el.innerHTML=`<div class="sectitle">MCP tool catalog · ${total} tools <span class="ln"></span></div>`;
+  toolGroups.forEach(g=>{
+    const h=document.createElement('div');h.className='sectitle';h.innerHTML=`${g.g} <span class="grpcount">${g.tools.length}</span><span class="ln"></span>`;el.appendChild(h);
+    const grid=document.createElement('div');grid.className='toolgrid';
+    grid.innerHTML=g.tools.map(([n,d])=>`<div class="tool"><div class="tn">${n}</div><div class="td">${d}</div></div>`).join('');
+    el.appendChild(grid);
+  });
+}
+
+/* ---------- view switching ---------- */
+document.getElementById('seg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#seg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.getElementById('view-'+b.dataset.v).classList.add('on');
+});
+
+/* ---------- composer ---------- */
+sendBtn.onclick=()=>{const v=inputEl.value;inputEl.value='';inputEl.style.height='auto';handle(v);};
+inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendBtn.click();}});
+inputEl.addEventListener('input',()=>{inputEl.style.height='auto';inputEl.style.height=Math.min(inputEl.scrollHeight,120)+'px';});
+
+/* ---------- init ---------- */
+renderFleet(); renderActions(); renderTools();
+onboard();
+</script>
+</body>
+</html>
